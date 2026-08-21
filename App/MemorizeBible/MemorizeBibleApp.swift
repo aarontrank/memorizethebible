@@ -9,6 +9,7 @@ import SwiftUI
 @main
 struct MemorizeBibleApp: App {
     @State private var state: AppState
+    @State private var navigator = Navigator()
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
@@ -21,6 +22,7 @@ struct MemorizeBibleApp: App {
         WindowGroup {
             DashboardView()
                 .environment(state)
+                .environment(navigator)
                 .tint(Palette.text)
                 .background(Palette.background)
         }

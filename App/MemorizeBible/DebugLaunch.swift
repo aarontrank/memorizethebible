@@ -29,6 +29,14 @@
 
         static var includeHeadings: Bool { arguments.contains("-debugHeadings") }
 
+        /// Sets the celebration off on launch, so the fireworks can be seen
+        /// without finishing something first.
+        static var celebrate: Bool { arguments.contains("-debugCelebrate") }
+
+        /// Puts the walkthrough into its running state without the welcome
+        /// sheet, so its tips can be inspected screen by screen.
+        static var walkthroughRunning: Bool { arguments.contains("-debugWalkthrough") }
+
         /// Initial mask level for Review, 0...4.
         static var level: Int? { value(for: "-debugLevel").flatMap(Int.init) }
 
@@ -77,10 +85,18 @@
 
         /// Builds a snapshot that lands the target on the requested step.
         static func seededProgress(content: ContentStore, clock: any AppClock) -> ProgressSnapshot? {
-            guard let targetID else { return nil }
+            guard let targetID else {
+                guard walkthroughRunning else { return nil }
+                var snapshot = ProgressSnapshot()
+                snapshot.onboarding = OnboardingState(isActive: true, hasBeenOffered: true)
+                return snapshot
+            }
             var snapshot = ProgressSnapshot()
             snapshot.includeSuperscriptions = includeHeadings
             snapshot.currentTarget = targetID
+            if walkthroughRunning {
+                snapshot.onboarding = OnboardingState(isActive: true, hasBeenOffered: true)
+            }
 
             let report = ProgressReport(content: content, clock: clock)
             let target: MemoryTarget?

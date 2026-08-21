@@ -4,10 +4,14 @@ import SwiftUI
 /// The root screen (§8.1), widened from 150 psalms to the whole Bible.
 struct DashboardView: View {
     @Environment(AppState.self) private var state
-    @State private var path: [Route] = []
+    @Environment(Navigator.self) private var navigator
+    @State private var showingWelcome = false
+    @State private var showingSkipReminder = false
+    @State private var showingWalkthroughFinished = false
 
     var body: some View {
-        NavigationStack(path: $path) {
+        @Bindable var navigator = navigator
+        return NavigationStack(path: $navigator.path) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 28) {
                     title
@@ -15,11 +19,17 @@ struct DashboardView: View {
                         errorBanner(error)
                     }
                     continueCard
+                        .tip(
+                            Walkthrough.continueTip(state: state),
+                            caret: .bottom,
+                            onSkip: skipWalkthrough
+                        )
                     planSection
                     completedPlanSection
                     inProgressSection
                     memorizedSection
                     browseLinks
+                        .tip(browseTip, caret: .top, onSkip: state.isWalkthroughRunning ? skipWalkthrough : nil)
                     // Last, not first: 31,086 verses is a number to glance at
                     // when you want it, not the thing that greets you.
                     overallSection
@@ -30,6 +40,11 @@ struct DashboardView: View {
                 .frame(maxWidth: .infinity)
             }
             .background(Palette.background)
+            .overlay {
+                if state.celebrationCount > 0 {
+                    FireworksView(trigger: state.celebrationCount)
+                }
+            }
             // The title is drawn in the content rather than left to the
             // navigation bar: a system large title truncates, and at
             // accessibility sizes "Memorize The Bible" loses the word that
@@ -38,19 +53,75 @@ struct DashboardView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { path.append(.settings) } label: {
+                    Button { navigator.push(.settings) } label: {
                         Image(systemName: "gearshape")
                     }
                     .accessibilityLabel("Settings")
                 }
             }
-            .memorizeDestinations(route: $path)
+            .memorizeDestinations(route: $navigator.path)
+            .sheet(isPresented: $showingWelcome) {
+                WalkthroughWelcomeView(
+                    onStart: {
+                        state.startWalkthrough()
+                        showingWelcome = false
+                    },
+                    onSkip: {
+                        state.declineWalkthroughOffer()
+                        showingWelcome = false
+                        showingSkipReminder = true
+                    }
+                )
+            }
+            .sheet(isPresented: $showingWalkthroughFinished) {
+                WalkthroughFinishedView { showingWalkthroughFinished = false }
+            }
+            .alert("Walkthrough skipped", isPresented: $showingSkipReminder) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("You can run it any time from Settings.")
+            }
+            // The walkthrough ends the moment its demo plan is finished, so the
+            // congratulation and the plan's disappearance happen together.
+            // Checked on appear as well as on change: finishing the demo and
+            // then quitting would otherwise leave the walkthrough running
+            // forever, with a completed plan and nothing left to do.
+            .onChange(of: state.isWalkthroughRunning ? state.walkthroughProgress.isComplete : false) {
+                _, _ in finishWalkthroughIfDemoComplete()
+            }
+            .onAppear {
+                #if DEBUG
+                    if DebugLaunch.celebrate { state.celebrate() }
+                #endif
+                finishWalkthroughIfDemoComplete()
+                if state.shouldOfferWalkthrough { showingWelcome = true }
+            }
             .task {
                 #if DEBUG
-                    if let route = DebugLaunch.initialRoute { path = [route] }
+                    if let route = DebugLaunch.initialRoute { navigator.path = [route] }
                 #endif
             }
         }
+    }
+
+    /// The prompt under the browse links. It speaks up during the walkthrough,
+    /// and whenever there is nothing to carry on with — a finished plan leaves
+    /// the home screen with no obvious next move otherwise.
+    private var browseTip: String? {
+        if let tip = Walkthrough.browseTip(state: state) { return tip }
+        guard resumableTarget == nil else { return nil }
+        return "Nothing in progress. Pick a book or a plan to start something new."
+    }
+
+    private func finishWalkthroughIfDemoComplete() {
+        guard state.isWalkthroughRunning, state.walkthroughProgress.isComplete else { return }
+        state.endWalkthrough(completed: true)
+        showingWalkthroughFinished = true
+    }
+
+    private func skipWalkthrough() {
+        state.endWalkthrough(completed: false)
+        showingSkipReminder = true
     }
 
     private var title: some View {
@@ -94,12 +165,22 @@ struct DashboardView: View {
 
     // MARK: - Continue
 
+    /// What Continue would resume, if there is anything. A finished target is
+    /// nothing to continue — offering it would be a dead end.
+    private var resumableTarget: MemoryTarget? {
+        guard let target = state.target(for: state.progress.currentTarget),
+            !target.units.isEmpty,
+            !state.isComplete(target.id)
+        else { return nil }
+        return target
+    }
+
     @ViewBuilder
     private var continueCard: some View {
-        if let target = state.target(for: state.progress.currentTarget) {
+        if let target = resumableTarget {
             let done = masteredCount(in: target)
             Button {
-                path.append(.session(target.id))
+                navigator.push(.session(target.id))
             } label: {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Continue")
@@ -136,7 +217,6 @@ struct DashboardView: View {
 
     private func continueSubtitle(target: MemoryTarget, mastered: Int) -> String {
         guard !target.units.isEmpty else { return "Nothing to memorize here" }
-        if mastered == target.units.count { return "Memorized" }
         let position = state.progress.currentVerse.flatMap { target.position(of: $0) }.map { $0 + 1 }
         let where_ = position.map { "Verse \($0) of \(target.units.count)" }
             ?? "\(target.units.count) verses"
@@ -153,11 +233,11 @@ struct DashboardView: View {
         }
         if inProgress.isEmpty && completedPlans.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
-                sectionHeader("Plans") { path.append(.plans) }
+                sectionHeader("Plans") { navigator.push(.plans) }
                 Text("Memorize a set of verses together — the Roman Road, the Sermon on the Mount, or your own.")
                     .font(Typography.chrome(.footnote))
                     .foregroundStyle(Palette.dimmedText)
-                Button("Browse plans") { path.append(.plans) }
+                Button("Browse plans") { navigator.push(.plans) }
                     .font(Typography.chrome(.subheadline))
                     .buttonStyle(.plain)
                     .foregroundStyle(Palette.text)
@@ -166,10 +246,10 @@ struct DashboardView: View {
             VStack(alignment: .leading, spacing: 10) {
                 // Named as a pair with "Completed plans" below, so neither
                 // header reads as though it holds every plan.
-                sectionHeader("Plans in progress") { path.append(.plans) }
+                sectionHeader("Plans in progress") { navigator.push(.plans) }
                 ForEach(inProgress) { plan in
                     let progress = state.planProgress(plan)
-                    Button { path.append(.plan(plan.id)) } label: {
+                    Button { navigator.push(.plan(plan.id)) } label: {
                         HStack(spacing: 12) {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(plan.title)
@@ -199,7 +279,7 @@ struct DashboardView: View {
                 sectionHeader("Completed plans", action: nil)
                 ForEach(completedPlans) { plan in
                     let progress = state.planProgress(plan)
-                    Button { path.append(.review(.plan(plan.id))) } label: {
+                    Button { navigator.push(.review(.plan(plan.id))) } label: {
                         HStack(spacing: 8) {
                             VStack(alignment: .leading, spacing: 2) {
                                 HStack(spacing: 8) {
@@ -262,7 +342,7 @@ struct DashboardView: View {
             VStack(alignment: .leading, spacing: 10) {
                 sectionHeader("Memorized", action: nil)
                 ForEach(memorized.prefix(8)) { chapter in
-                    Button { path.append(.review(.chapter(chapter.ref))) } label: {
+                    Button { navigator.push(.review(.chapter(chapter.ref))) } label: {
                         HStack {
                             Text(state.title(for: chapter.ref))
                                 .font(Typography.scripture(.body))
@@ -281,7 +361,7 @@ struct DashboardView: View {
     }
 
     private func chapterRow(_ chapter: ChapterProgress, route: Route) -> some View {
-        Button { path.append(route) } label: {
+        Button { navigator.push(route) } label: {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(state.title(for: chapter.ref))
@@ -329,7 +409,7 @@ struct DashboardView: View {
     }
 
     private func navRow(_ title: String, route: Route) -> some View {
-        Button { path.append(route) } label: {
+        Button { navigator.push(route) } label: {
             HStack {
                 Text(title)
                     .font(Typography.chrome(.body))

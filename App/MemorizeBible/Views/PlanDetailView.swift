@@ -50,6 +50,7 @@ struct PlanDetailView: View {
                         .font(Typography.chrome(.headline))
                         .foregroundStyle(Palette.text)
                 }
+                .tip(Walkthrough.planDetailTip(state: state, planID: plan.id), caret: .bottom)
             }
             .listRowBackground(Palette.background)
 

@@ -211,6 +211,41 @@ final class AppState {
         mutate { $0.hiddenBuiltInPlans.removeAll() }
     }
 
+    /// Whether the given target has been finished.
+    func isComplete(_ id: MemoryTargetID) -> Bool { report.isComplete(id, in: progress) }
+
+    /// Bumped when something is finished, to set the celebration going. Not
+    /// persisted: a celebration is for the moment it happens, not for every
+    /// launch afterwards.
+    private(set) var celebrationCount = 0
+
+    func celebrate() { celebrationCount += 1 }
+
+    // MARK: - Walkthrough
+
+    var isWalkthroughRunning: Bool { progress.onboarding.isActive }
+    var hasCompletedWalkthrough: Bool { progress.onboarding.hasCompleted }
+    var shouldOfferWalkthrough: Bool { progress.onboarding.shouldOfferOnLaunch }
+
+    var walkthroughPlan: MemoryPlan { BuiltInPlans.walkthrough }
+    var walkthroughProgress: PlanProgress { planProgress(BuiltInPlans.walkthrough) }
+
+    func startWalkthrough() {
+        apply(report.startingWalkthrough(progress))
+    }
+
+    /// Ends the walkthrough. The demo plan goes; the verses it taught stay
+    /// memorized, because the user did the work and mastery belongs to the
+    /// verse rather than to the plan that introduced it.
+    func endWalkthrough(completed: Bool) {
+        apply(report.endingWalkthrough(progress, completed: completed))
+    }
+
+    /// Marks the offer as made without starting, so the first launch asks once.
+    func declineWalkthroughOffer() {
+        mutate { $0.onboarding.hasBeenOffered = true }
+    }
+
     // MARK: - Lifecycle (§10)
 
     func didEnterForeground() {

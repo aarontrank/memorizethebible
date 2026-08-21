@@ -11,6 +11,7 @@ struct PlanListView: View {
                 ForEach(builtIn) { plan in
                     NavigationLink(value: Route.plan(plan.id)) { row(plan) }
                         .listRowBackground(Palette.background)
+                        .tip(plan.id == Walkthrough.planID ? Walkthrough.planListTip(state: state) : nil)
                 }
             } header: {
                 Text("Plans")

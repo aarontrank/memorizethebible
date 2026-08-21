@@ -4,6 +4,7 @@ import SwiftUI
 /// Settings (§8.4).
 struct SettingsView: View {
     @Environment(AppState.self) private var state
+    @Environment(\.dismiss) private var dismiss
     @State private var showHeadingsConfirmation = false
     @State private var reopenedChapters: [ChapterRef] = []
     @State private var resetStage = 0
@@ -12,6 +13,7 @@ struct SettingsView: View {
         @Bindable var state = state
         List {
             remindersSection
+            walkthroughSection
             headingsSection
             aboutSection
             resetSection
@@ -108,6 +110,26 @@ struct SettingsView: View {
                     + "Off by default: headings are displayed but not memorized. Turning this "
                     + "back off keeps any heading work you have already done."
             )
+        }
+    }
+
+    // MARK: - Walkthrough
+
+    private var walkthroughSection: some View {
+        Section {
+            Button(state.isWalkthroughRunning ? "Restart the walkthrough" : "Show the walkthrough") {
+                state.startWalkthrough()
+                dismiss()
+            }
+            if state.isWalkthroughRunning {
+                Button("Stop the walkthrough", role: .destructive) {
+                    state.endWalkthrough(completed: false)
+                }
+            }
+        } header: {
+            Text("Walkthrough")
+        } footer: {
+            Text("A guided tour of a plan, using a demo of two very short verses. The demo appears only while the walkthrough is running.")
         }
     }
 

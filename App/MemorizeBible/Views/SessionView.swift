@@ -7,6 +7,7 @@ struct SessionView: View {
     let targetID: MemoryTargetID
 
     @Environment(AppState.self) private var state
+    @Environment(Navigator.self) private var navigator
     @Environment(\.dismiss) private var dismiss
     @State private var engine: SessionEngine?
 
@@ -45,7 +46,19 @@ struct SessionView: View {
                 scrollTarget: engine.focusVerse
             )
             Divider().overlay(Palette.progressTrack)
-            ControlBar(engine: engine, onFinish: { dismiss() })
+            if let tip = Walkthrough.sessionTip(state: state, engine: engine) {
+                TipBubble(text: tip, caret: .bottom, onSkip: { state.endWalkthrough(completed: false) })
+                    .padding(.horizontal, Metrics.gutter)
+                    .padding(.top, 10)
+            }
+            ControlBar(engine: engine, onFinish: { navigator.popToRoot() })
+        }
+        // Finishing takes you home rather than back through the screens you
+        // came in by, and the celebration happens there.
+        .onChange(of: engine.justCompletedTarget) { _, finished in
+            guard finished else { return }
+            state.celebrate()
+            navigator.popToRoot()
         }
     }
 }
