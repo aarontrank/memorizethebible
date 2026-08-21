@@ -34,6 +34,7 @@ struct VerseView: View {
 
     var body: some View {
         let flags = maskedFlags
+        let groups = LineWrapping.groupIndices(for: verse.tokens)
         FlowLayout(
             lineSpacing: metrics.lineSpacing,
             spaceWidth: metrics.spaceWidth,
@@ -47,15 +48,20 @@ struct VerseView: View {
                     .foregroundStyle(Palette.blankUnderline)
                     .tokenSpaceBefore(false)
                     .tokenIndent(verse.indent)
+                    // The mark and the number belong to the first word, so the
+                    // line never breaks between a verse number and its verse.
+                    .tokenGroup(groups.first ?? 0)
                     .accessibilityHidden(true)
             }
             if !verse.isSuperscription {
                 verseNumber
                     .tokenSpaceBefore(isCarriedOver)
                     .tokenIndent(verse.indent)
+                    .tokenGroup(groups.first ?? 0)
             }
             ForEach(Array(verse.tokens.enumerated()), id: \.offset) { index, token in
                 tokenView(index: index, token: token, isMasked: flags[index])
+                    .tokenGroup(groups[index])
             }
         }
         .accessibilityElement(children: .ignore)
