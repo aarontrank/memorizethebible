@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The launch screen: the app artwork centred and edge to edge, on #060706.
+
+  The image is square and aspect-fit, so pinning it to both margins makes it as
+  wide as the screen and as tall as it is wide, centred vertically. The
+  background is the same colour as the artwork's own ground, so there is no
+  seam where one ends and the other begins.
+-->
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="22505" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" launchScreen="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="LSC-vc-001">
+    <device id="retina6_12" orientation="portrait" appearance="light"/>
+    <dependencies>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="22504"/>
+        <capability name="Safe area layout guides" minToolsVersion="9.0"/>
+        <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
+    </dependencies>
+    <scenes>
+        <scene sceneID="LSC-sc-001">
+            <objects>
+                <viewController id="LSC-vc-001" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="LSC-vw-001">
+                        <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <subviews>
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="LaunchIcon" translatesAutoresizingMaskIntoConstraints="NO" id="LSC-iv-001"/>
+                        </subviews>
+                        <viewLayoutGuide key="safeArea" id="LSC-sa-001"/>
+                        <color key="backgroundColor" red="0.023529411764705882" green="0.027450980392156862" blue="0.023529411764705882" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                        <constraints>
+                            <constraint firstItem="LSC-iv-001" firstAttribute="leading" secondItem="LSC-vw-001" secondAttribute="leading" id="LSC-ct-001"/>
+                            <constraint firstItem="LSC-vw-001" firstAttribute="trailing" secondItem="LSC-iv-001" secondAttribute="trailing" id="LSC-ct-002"/>
+                            <constraint firstItem="LSC-iv-001" firstAttribute="centerY" secondItem="LSC-vw-001" secondAttribute="centerY" id="LSC-ct-003"/>
+                        </constraints>
+                    </view>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="LSC-fr-001" userLabel="First Responder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="53" y="375"/>
+        </scene>
+    </scenes>
+    <resources>
+        <image name="LaunchIcon" width="418" height="418"/>
+    </resources>
+</document>
