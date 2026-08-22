@@ -2,10 +2,11 @@
 <!--
   The launch screen: the app artwork centred and edge to edge, on #060706.
 
-  The image is square and aspect-fit, so pinning it to both margins makes it as
-  wide as the screen and as tall as it is wide, centred vertically. The
-  background is the same colour as the artwork's own ground, so there is no
-  seam where one ends and the other begins.
+  The image is square and aspect-fit, pinned to all four edges: it grows to the
+  smaller dimension and centres in the other, so it is full width in portrait
+  and full height in landscape without ever being clipped. The background is
+  the same colour as the artwork's own ground, so there is no seam where one
+  ends and the other begins.
 -->
 <document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="22505" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" launchScreen="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="LSC-vc-001">
     <device id="retina6_12" orientation="portrait" appearance="light"/>
@@ -29,7 +30,8 @@
                         <constraints>
                             <constraint firstItem="LSC-iv-001" firstAttribute="leading" secondItem="LSC-vw-001" secondAttribute="leading" id="LSC-ct-001"/>
                             <constraint firstItem="LSC-vw-001" firstAttribute="trailing" secondItem="LSC-iv-001" secondAttribute="trailing" id="LSC-ct-002"/>
-                            <constraint firstItem="LSC-iv-001" firstAttribute="centerY" secondItem="LSC-vw-001" secondAttribute="centerY" id="LSC-ct-003"/>
+                            <constraint firstItem="LSC-iv-001" firstAttribute="top" secondItem="LSC-vw-001" secondAttribute="top" id="LSC-ct-003"/>
+                            <constraint firstItem="LSC-vw-001" firstAttribute="bottom" secondItem="LSC-iv-001" secondAttribute="bottom" id="LSC-ct-004"/>
                         </constraints>
                     </view>
                 </viewController>

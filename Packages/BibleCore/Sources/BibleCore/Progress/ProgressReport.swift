@@ -218,14 +218,21 @@ public struct ProgressReport {
         )
     }
 
-    /// Built-in plans the user has not hidden, followed by their own.
+    /// Built-in plans the user has not hidden, followed by their own. The
+    /// walkthrough's demo plan leads the list, but only while the walkthrough
+    /// is running.
     public func plans(in progress: ProgressSnapshot) -> [MemoryPlan] {
-        BuiltInPlans.all.filter { !progress.hiddenBuiltInPlans.contains($0.id) }
+        let demo = progress.onboarding.isActive ? [BuiltInPlans.walkthrough] : []
+        return demo
+            + BuiltInPlans.all.filter { !progress.hiddenBuiltInPlans.contains($0.id) }
             + progress.customPlans
     }
 
+    /// Resolves any plan by id, including the demo plan when it is not listed,
+    /// so progress recorded against it still reads.
     public func plan(id: String, in progress: ProgressSnapshot) -> MemoryPlan? {
-        progress.customPlans.first { $0.id == id } ?? BuiltInPlans.plan(id: id)
+        if id == BuiltInPlans.walkthroughID { return BuiltInPlans.walkthrough }
+        return progress.customPlans.first { $0.id == id } ?? BuiltInPlans.plan(id: id)
     }
 
     // MARK: - Targets
@@ -253,6 +260,17 @@ public struct ProgressReport {
                 return Set(summary.firstVerse...last)
             }
             return Set((try? content.chapter(chapterRef))?.verseNumbers ?? [])
+        }
+    }
+
+    /// Whether a target has been finished, whichever kind it is.
+    public func isComplete(_ id: MemoryTargetID, in progress: ProgressSnapshot) -> Bool {
+        switch id {
+        case let .chapter(ref):
+            return chapterProgress(ref, in: progress).isMemorized
+        case let .plan(planID):
+            guard let plan = plan(id: planID, in: progress) else { return false }
+            return planProgress(plan, in: progress).isComplete
         }
     }
 

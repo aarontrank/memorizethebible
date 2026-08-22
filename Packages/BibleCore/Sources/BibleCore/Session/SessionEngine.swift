@@ -48,6 +48,10 @@ public final class SessionEngine {
     public private(set) var attemptHasPeek: Bool = false
     public let target: MemoryTarget
 
+    /// Set when the target is finished off *in this session*. Opening
+    /// something already finished must not celebrate it again.
+    public private(set) var justCompletedTarget = false
+
     /// Verses the user chose to work again this session. Deliberately not
     /// persisted: abandoning halfway leaves the verse as it was, still
     /// memorized, and the choice is simply offered again.
@@ -427,6 +431,7 @@ public final class SessionEngine {
         let recited = target.blocks.allSatisfy { isRecitationConfirmed(blockIndex: $0.index) }
         guard everythingWorked, recited else { return }
 
+        justCompletedTarget = true
         mutate { snapshot in
             if let chapterRef = self.target.chapterRef {
                 snapshot.update(chapterRef) { state in

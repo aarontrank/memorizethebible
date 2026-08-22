@@ -85,4 +85,7 @@ enum Metrics {
     /// §12: minimum tap target, including individual blanks.
     static let minimumTapTarget: CGFloat = 44
     static let gutter: CGFloat = 20
+    /// Width of the session controls when they sit beside the text rather than
+    /// under it. Wide enough for the level row and the longest button label.
+    static let controlRailWidth: CGFloat = 260
 }

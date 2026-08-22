@@ -220,3 +220,80 @@ final class CoverageTests: XCTestCase {
         )
     }
 }
+
+/// Finishing something: the signal that drives going home and celebrating.
+final class CompletionSignalTests: XCTestCase {
+    private var clock: TestClock!
+    private var content: ContentStore!
+    private var report: ProgressReport!
+
+    private let book = Fixture.testBook
+    private var chapterRef: ChapterRef { ChapterRef(book, 1) }
+
+    override func setUpWithError() throws {
+        clock = TestClock()
+        content = try Fixture.store([Fixture.chapter(1, verseCount: 2, book: book)])
+        report = ProgressReport(content: content, clock: clock)
+    }
+
+    private func engine(_ snapshot: ProgressSnapshot) throws -> SessionEngine {
+        SessionEngine(
+            target: report.target(for: try content.chapter(chapterRef), in: snapshot),
+            snapshot: snapshot,
+            clock: clock
+        )
+    }
+
+    func testNothingIsClaimedFinishedBeforeItIs() throws {
+        let engine = try engine(ProgressSnapshot())
+        XCTAssertFalse(engine.justCompletedTarget)
+        engine.takeVerseToMastered()
+        XCTAssertFalse(engine.justCompletedTarget, "one verse of two is not finishing")
+    }
+
+    func testFinishingRaisesTheSignal() throws {
+        let engine = try engine(ProgressSnapshot())
+        var guardCount = 0
+        while engine.step != .done, guardCount < 40 {
+            engine.confirmCurrentStep()
+            guardCount += 1
+        }
+        XCTAssertLessThan(guardCount, 40)
+        XCTAssertTrue(engine.justCompletedTarget)
+    }
+
+    /// Opening something already finished must not celebrate it all over again.
+    func testReopeningAFinishedTargetRaisesNothing() throws {
+        let first = try engine(ProgressSnapshot())
+        var guardCount = 0
+        while first.step != .done, guardCount < 40 {
+            first.confirmCurrentStep()
+            guardCount += 1
+        }
+
+        let reopened = try engine(first.snapshot)
+        XCTAssertEqual(reopened.step, .done)
+        XCTAssertFalse(
+            reopened.justCompletedTarget,
+            "the celebration belongs to the moment it happened"
+        )
+    }
+
+    func testCompletionIsReportedForEitherKindOfTarget() throws {
+        var snapshot = ProgressSnapshot()
+        XCTAssertFalse(report.isComplete(.chapter(chapterRef), in: snapshot))
+
+        let engine = try engine(snapshot)
+        var guardCount = 0
+        while engine.step != .done, guardCount < 40 {
+            engine.confirmCurrentStep()
+            guardCount += 1
+        }
+        snapshot = engine.snapshot
+        XCTAssertTrue(report.isComplete(.chapter(chapterRef), in: snapshot))
+        XCTAssertFalse(
+            report.isComplete(.plan("nope"), in: snapshot),
+            "a plan that does not exist is not complete"
+        )
+    }
+}

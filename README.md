@@ -80,6 +80,22 @@ by book, chapter, and verse. Pre-tokenising 31,086 verses came to roughly 45 MB
 of JSON; text plus structure is 5 MB. `CorpusTests` asserts the runtime
 reproduces every verse exactly, so the move is checked rather than hoped for.
 
+**Punctuation never starts a line.** Words are placed one at a time so a blank
+can be the same word drawn invisibly, which means a line could otherwise break
+anywhere — leaving a lone `,` or `.` stranded at the left margin.
+`LineWrapping.groupIndices` ties each mark to the word it belongs to, and
+`FlowLayout` may only break between those groups. A corpus test walks all 31,086
+verses and asserts no group is punctuation alone.
+
+**Landscape moves the session controls, it does not just permit rotation.**
+Height is what landscape is short of, and a control bar across the foot spends
+two fifths of it — about three lines of scripture. In compact height the same
+prompt, level controls and buttons become a column beside the text, which costs
+width that landscape has to spare, and the reading area roughly triples. The bar
+and the rail are two arrangements of one set of views (`AnyLayout`), so rotating
+mid-session keeps your place in the chapter. At accessibility text sizes a
+column that narrow would be worse than the squeeze, so the bar stays.
+
 **`BibleCore` is now a misnomer** — it holds the whole Bible. Renaming the
 module is mechanical but touches the Xcode package reference, so it is left for
 a moment when the project is not mid-change. The same goes for the app's own
@@ -92,7 +108,7 @@ and no waiting on the calendar.
 ## Build and test
 
 ```sh
-# Logic (100 tests, no simulator needed)
+# Logic (131 tests, no simulator needed)
 cd Packages/BibleCore && swift test
 
 # Content pipeline (29 tests, validates all 31,086 verses)
@@ -179,6 +195,9 @@ xcrun simctl launch <sim> memorizethebible.aarontrank.com \
 | `-debugPlan` | plan id, e.g. `builtin.roman-road` |
 | `-debugCompletePlan` | additionally marks a plan complete, to see both plan sections |
 | `-debugWorkedThrough` | marks the target's first N units as already worked here |
+| `-debugWalkthrough` | puts the walkthrough into its running state, skipping the welcome sheet |
+| `-debugCelebrate` | sets the fireworks off on launch |
+| `-debugLandscape` | rotates the scene to landscape on launch (Simulator ignores keystroke rotation from a script) |
 | `-debugSeed` | `read`, `ladder1`…`ladder4`, `cumulative`, `partial`, `recitation`, `memorized` |
 | `-debugScreen` | `session` (default), `review`, `books`, `chapters`, `plans`, `plan`, `newPlan`, `settings`, `dashboard` |
 | `-debugLevel` | initial mask level for Review, `0`–`4` |
@@ -199,6 +218,45 @@ xcrun simctl launch <sim> memorizethebible.aarontrank.com \
 | M8 | Notifications + Settings | done — 24h rule unit tested; heading toggle non-destructive both ways |
 | M9 | Accessibility + polish | done — VoiceOver, Dynamic Type, dark mode, Reduce Motion, Literata |
 | M10 | TestFlight | not started — needs a signing team |
+
+## Walkthrough
+
+A first-run tour, also reachable from **Settings → Walkthrough**. It is built
+around a demo plan of 1 Thessalonians 5:16–17 — "Rejoice at all times." and
+"Pray without ceasing.", seven words together — so the whole loop can be walked
+in a minute.
+
+The demo plan is listed **only while the walkthrough is running**, and goes when
+it ends, whether finished or skipped. The two verses it taught stay memorized:
+they are real verses and the user really learned them, and mastery belongs to
+the verse rather than to the plan that introduced it. The completion sheet says
+so, because a demo that quietly kept something would be a surprise and one that
+quietly took something away would be worse.
+
+Tips are derived from context — which screen, and how far the demo plan has got
+— rather than from a step counter. A counter falls out of step the moment the
+user taps back or finishes a verse early, and then the tour is either stuck or
+lying; asking "what is on screen" cannot get stuck.
+
+## Finishing something
+
+Completing a chapter or a plan takes you straight back to the home screen —
+`Navigator` owns the navigation path so a session deep in the stack can send you
+home rather than back through the screens you arrived by — and sets off a short
+burst of fireworks.
+
+`FireworksView` draws into a single `Canvas` rather than animating a few hundred
+views, and stops itself after 2.6 seconds instead of idling on a timer. It is
+three shades of the icon's gold, with no white or ink: one would vanish on the
+light background and the other on the dark. Under Reduce Motion it draws one
+still frame of the burst instead of animating (§12).
+
+The celebration fires only when something is finished **in that session** —
+`SessionEngine.justCompletedTarget` — so reopening a finished plan is quiet.
+
+A finished target is also nothing to continue, so the Continue card stands down
+rather than offering a dead end, and the home screen prompts you to pick a book
+or a plan instead.
 
 ## Content figures
 

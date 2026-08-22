@@ -207,6 +207,7 @@ public struct ProgressSnapshot: Codable, Hashable, Sendable {
     /// reciting it in a plan — so each target tracks what it has covered and
     /// offers the choice when it meets a verse you already know.
     public var coveredUnits: [MemoryTargetID: Set<VerseRef>]
+    public var onboarding: OnboardingState
     public var lastOpenedAt: Date
     public var notificationsEnabled: Bool
     public var reminderTime: ReminderTime
@@ -226,6 +227,7 @@ public struct ProgressSnapshot: Codable, Hashable, Sendable {
         planCumulativeProgress: [String: Int] = [:],
         confirmedPlanBlocks: [String: Set<Int>] = [:],
         coveredUnits: [MemoryTargetID: Set<VerseRef>] = [:],
+        onboarding: OnboardingState = OnboardingState(),
         lastOpenedAt: Date = .distantPast,
         notificationsEnabled: Bool = false,
         reminderTime: ReminderTime = .default,
@@ -243,6 +245,7 @@ public struct ProgressSnapshot: Codable, Hashable, Sendable {
         self.planCumulativeProgress = planCumulativeProgress
         self.confirmedPlanBlocks = confirmedPlanBlocks
         self.coveredUnits = coveredUnits
+        self.onboarding = onboarding
         self.lastOpenedAt = lastOpenedAt
         self.notificationsEnabled = notificationsEnabled
         self.reminderTime = reminderTime
@@ -304,7 +307,7 @@ public struct ProgressSnapshot: Codable, Hashable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case schemaVersion, translationId, currentTarget, currentVerse
         case verseStates, chapterStates, customPlans, hiddenBuiltInPlans, completedPlans
-        case planCumulativeProgress, confirmedPlanBlocks, coveredUnits
+        case planCumulativeProgress, confirmedPlanBlocks, coveredUnits, onboarding
         case lastOpenedAt, notificationsEnabled, reminderTime, includeSuperscriptions
         // Schema 2 and earlier.
         // `currentVerse` is shared: schema 2 wrote an Int there, schema 3
@@ -331,6 +334,7 @@ public struct ProgressSnapshot: Codable, Hashable, Sendable {
             try container.decodeIfPresent([String: Int].self, forKey: .planCumulativeProgress) ?? [:]
         confirmedPlanBlocks =
             try container.decodeIfPresent([String: Set<Int>].self, forKey: .confirmedPlanBlocks) ?? [:]
+        onboarding = try container.decodeIfPresent(OnboardingState.self, forKey: .onboarding) ?? OnboardingState()
         let rawCovered =
             try container.decodeIfPresent([String: [String]].self, forKey: .coveredUnits) ?? [:]
         coveredUnits = Dictionary(
@@ -427,6 +431,7 @@ public struct ProgressSnapshot: Codable, Hashable, Sendable {
         try container.encode(completedPlans, forKey: .completedPlans)
         try container.encode(planCumulativeProgress, forKey: .planCumulativeProgress)
         try container.encode(confirmedPlanBlocks, forKey: .confirmedPlanBlocks)
+        try container.encode(onboarding, forKey: .onboarding)
         try container.encode(
             Dictionary(
                 uniqueKeysWithValues: coveredUnits.map {

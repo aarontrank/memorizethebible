@@ -37,6 +37,10 @@
         /// sheet, so its tips can be inspected screen by screen.
         static var walkthroughRunning: Bool { arguments.contains("-debugWalkthrough") }
 
+        /// Rotates the scene to landscape on launch, so the layout can be
+        /// screenshot in that orientation without a keystroke into Simulator.
+        static var landscape: Bool { arguments.contains("-debugLandscape") }
+
         /// Initial mask level for Review, 0...4.
         static var level: Int? { value(for: "-debugLevel").flatMap(Int.init) }
 

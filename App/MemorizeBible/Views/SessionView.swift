@@ -9,7 +9,18 @@ struct SessionView: View {
     @Environment(AppState.self) private var state
     @Environment(Navigator.self) private var navigator
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var engine: SessionEngine?
+
+    /// In landscape the scarce dimension is height, and a bottom bar spends
+    /// two fifths of it on controls — leaving about three lines of scripture.
+    /// The same controls in a column beside the text cost width, which
+    /// landscape has to spare. At accessibility sizes a column that narrow
+    /// would be worse than the squeeze, so the bar stays put there.
+    private var usesSideRail: Bool {
+        verticalSizeClass == .compact && dynamicTypeSize <= .accessibility1
+    }
 
     var body: some View {
         Group {
@@ -36,22 +47,23 @@ struct SessionView: View {
 
     @ViewBuilder
     private func content(engine: SessionEngine) -> some View {
-        VStack(spacing: 0) {
-            ScriptureView(
-                sections: state.sections(for: engine.target),
-                activeUnits: Set(engine.activeUnits),
-                activeLevel: engine.level,
-                carriedOverUnits: engine.carriedOverUnits,
-                onPeek: { engine.recordPeek($0) },
-                scrollTarget: engine.focusVerse
-            )
+        let controls = ControlBar(
+            engine: engine,
+            axis: usesSideRail ? .vertical : .horizontal,
+            tip: Walkthrough.sessionTip(state: state, engine: engine),
+            onSkip: { state.endWalkthrough(completed: false) },
+            onFinish: { navigator.popToRoot() }
+        )
+        // One arrangement swapped for another, rather than one view tree
+        // swapped for another: rotating mid-session keeps the same scroll view,
+        // so it keeps your place in the chapter.
+        let arrangement = usesSideRail
+            ? AnyLayout(HStackLayout(spacing: 0))
+            : AnyLayout(VStackLayout(spacing: 0))
+        arrangement {
+            scripture(engine: engine)
             Divider().overlay(Palette.progressTrack)
-            if let tip = Walkthrough.sessionTip(state: state, engine: engine) {
-                TipBubble(text: tip, caret: .bottom, onSkip: { state.endWalkthrough(completed: false) })
-                    .padding(.horizontal, Metrics.gutter)
-                    .padding(.top, 10)
-            }
-            ControlBar(engine: engine, onFinish: { navigator.popToRoot() })
+            controls.frame(width: usesSideRail ? Metrics.controlRailWidth : nil)
         }
         // Finishing takes you home rather than back through the screens you
         // came in by, and the celebration happens there.
@@ -61,40 +73,107 @@ struct SessionView: View {
             navigator.popToRoot()
         }
     }
+
+    private func scripture(engine: SessionEngine) -> some View {
+        ScriptureView(
+            sections: state.sections(for: engine.target),
+            activeUnits: Set(engine.activeUnits),
+            activeLevel: engine.level,
+            carriedOverUnits: engine.carriedOverUnits,
+            onPeek: { engine.recordPeek($0) },
+            scrollTarget: engine.focusVerse
+        )
+    }
 }
 
 /// §8.2: `Show more` · level indicator · `Show less` · primary action.
+///
+/// The same three pieces — what to do, how much is hidden, and the answer —
+/// arranged as a bar under the text in portrait and as a column beside it in
+/// landscape.
 struct ControlBar: View {
     let engine: SessionEngine
+    /// `.horizontal` reads as a bar across the foot; `.vertical` as a rail
+    /// down the trailing edge.
+    var axis: Axis = .horizontal
+    var tip: String?
+    var onSkip: (() -> Void)?
     let onFinish: () -> Void
 
     var body: some View {
-        VStack(spacing: 14) {
-            prompt
-            if showsLevelControls {
-                HStack(spacing: 18) {
-                    levelButton("Show more", systemImage: "eye", enabled: engine.canShowMore) {
-                        engine.showMore()
-                    }
-                    LevelIndicator(level: engine.level)
-                    levelButton("Show less", systemImage: "eye.slash", enabled: engine.canShowLess) {
-                        engine.showLess()
-                    }
-                }
-            }
-            HStack(spacing: 12) {
-                if showsMissButton {
-                    Button(missTitle) { engine.reportMiss() }
-                        .buttonStyle(SecondaryButtonStyle())
-                }
-                Button(primaryTitle) { primaryAction() }
-                    .buttonStyle(PrimaryButtonStyle())
+        Group {
+            switch axis {
+            case .horizontal: bar
+            case .vertical: rail
             }
         }
+        .background(Palette.background)
+    }
+
+    private var bar: some View {
+        VStack(spacing: 14) {
+            if let tip { TipBubble(text: tip, caret: .bottom, onSkip: onSkip) }
+            prompt
+            if showsLevelControls { levelControls }
+            HStack(spacing: 12) {
+                if showsMissButton { missButton.fixedSize() }
+                primaryButton
+            }
+        }
+        // Match the text above: controls that ran the full width of a wide
+        // screen would sit nowhere near the column they belong to.
+        .frame(maxWidth: Metrics.scriptureMaxWidth)
+        .frame(maxWidth: .infinity)
         .padding(.horizontal, Metrics.gutter)
         .padding(.top, 14)
         .padding(.bottom, 8)
-        .background(Palette.background)
+    }
+
+    private var rail: some View {
+        VStack(spacing: 12) {
+            Spacer(minLength: 0)
+            // What to do sits directly above the controls it describes. It can
+            // run long — a walkthrough tip at a large text size more so — so it
+            // scrolls when it has to, and only then. The controls never scroll.
+            ViewThatFits(in: .vertical) {
+                guidance
+                ScrollView { guidance }.scrollBounceBehavior(.basedOnSize)
+            }
+            if showsLevelControls { levelControls }
+            primaryButton
+            if showsMissButton { missButton }
+        }
+        .padding(.horizontal, Metrics.gutter)
+        .padding(.vertical, 12)
+    }
+
+    private var guidance: some View {
+        VStack(spacing: 12) {
+            if let tip { TipBubble(text: tip, caret: .bottom, onSkip: onSkip) }
+            prompt
+        }
+    }
+
+    private var levelControls: some View {
+        HStack(spacing: 18) {
+            levelButton("Show more", systemImage: "eye", enabled: engine.canShowMore) {
+                engine.showMore()
+            }
+            LevelIndicator(level: engine.level)
+            levelButton("Show less", systemImage: "eye.slash", enabled: engine.canShowLess) {
+                engine.showLess()
+            }
+        }
+    }
+
+    private var primaryButton: some View {
+        Button(primaryTitle) { primaryAction() }
+            .buttonStyle(PrimaryButtonStyle())
+    }
+
+    private var missButton: some View {
+        Button(missTitle) { engine.reportMiss() }
+            .buttonStyle(SecondaryButtonStyle())
     }
 
     // MARK: - Copy
@@ -266,7 +345,8 @@ struct SecondaryButtonStyle: ButtonStyle {
         configuration.label
             .font(Typography.chrome(.headline))
             .foregroundStyle(Palette.text)
-            .frame(minWidth: 96, minHeight: Metrics.minimumTapTarget)
+            .frame(maxWidth: .infinity, minHeight: Metrics.minimumTapTarget)
+            .frame(minWidth: 96)
             .background(Palette.progressTrack, in: RoundedRectangle(cornerRadius: 12))
             .opacity(configuration.isPressed ? 0.8 : 1)
     }

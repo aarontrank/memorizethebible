@@ -30,6 +30,8 @@ struct ScriptureView: View {
     var onPeek: ((VerseRef) -> Void)?
     var scrollTarget: VerseRef?
 
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
+
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
@@ -56,7 +58,9 @@ struct ScriptureView: View {
                 .frame(maxWidth: Metrics.scriptureMaxWidth, alignment: .leading)
                 .frame(maxWidth: .infinity, alignment: .center)
                 .padding(.horizontal, Metrics.gutter)
-                .padding(.vertical, 24)
+                // Breathing room above and below the text, but not in
+                // landscape, where 48 points is most of a line of scripture.
+                .padding(.vertical, verticalSizeClass == .compact ? 12 : 24)
             }
             .onChange(of: scrollTarget) { _, target in
                 guard let target else { return }
