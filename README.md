@@ -87,6 +87,51 @@ anywhere — leaving a lone `,` or `.` stranded at the left margin.
 `FlowLayout` may only break between those groups. A corpus test walks all 31,086
 verses and asserts no group is punctuation alone.
 
+**A shared plan travels inside its own link.** A plan is only an ordering over
+references, so the whole plan — title, sections, passages — is JSON, base64url,
+and a query parameter. There is no server to publish to, no account to look it
+up under, and nothing that can go stale or be taken down; the recipient's app
+reads the link and asks whether to save it. Ordinary plans come to a few hundred
+characters (`PlanSharingTests` holds the largest built-in under 900). Receiving
+the same plan twice updates the copy you have rather than leaving you with two,
+because the link carries the sender's plan id.
+
+`PlanSharing.decode` treats every link as hostile: unreadable passages are
+dropped, a section left with none goes, titles are clamped, absurd counts are
+capped, and a payload from a newer format is refused rather than guessed at.
+
+**Progress cards are drawn, not screenshotted.** `ProgressCardView` is a SwiftUI
+view run through `ImageRenderer` at 1080×1080, offered from the share sheet on a
+plan, a book, or a chapter. A finished one leads with a gold seal — the same
+gold a filled blank has been all along — and carries the date; an unfinished one
+carries the bar and the count. It is the one thing in the app not bound by §9's
+"no decorative imagery", because it leaves the app and has to stand on its own
+in a feed, so it carries the mark and the name.
+
+Two things the card does deliberately: it pins `colorScheme` to light, so an
+exported image does not depend on what the device was set to when it was made,
+and it draws its own border, so a white card does not dissolve into a white
+feed. It is square because it holds four short lines — a taller frame only added
+emptiness, and a square survives every place these get posted uncropped.
+
+**Plan links are universal links.** `PlanSharing.link` writes
+`https://aarontrank.com/projects/memorize-the-bible/plan?d=…`, claimed by the
+Associated Domains entitlement in `App/MemorizeBible.entitlements`. Tapping one
+opens the app directly, with none of the "Open in…" confirmation a custom scheme
+draws; anyone without the app lands on a page that explains what the link is.
+
+The reader still accepts the original `memorizethebible://plan` scheme, which
+stays registered in `Info.plist`. Links written before the move are already out
+in people's messages, and there is no way to reach back and fix them.
+
+The matching half is served from the `aarontrank.com` site repo, as a static
+asset at `public/.well-known/apple-app-site-association` with
+`Content-Type: application/json` forced by `public/_headers`. A static asset
+rather than a route because that site sets `trailingSlash: true`, which would
+308 a route, and Apple's fetcher does not follow redirects. **Changing the path
+in one place without the other silently stops links opening the app**, so
+`PlanSharing.webHost` and `webPath` say so.
+
 **Landscape moves the session controls, it does not just permit rotation.**
 Height is what landscape is short of, and a control bar across the foot spends
 two fifths of it — about three lines of scripture. In compact height the same
@@ -108,7 +153,7 @@ and no waiting on the calendar.
 ## Build and test
 
 ```sh
-# Logic (131 tests, no simulator needed)
+# Logic (155 tests, no simulator needed)
 cd Packages/BibleCore && swift test
 
 # Content pipeline (29 tests, validates all 31,086 verses)
@@ -203,6 +248,12 @@ xcrun simctl launch <sim> memorizethebible.aarontrank.com \
 | `-debugLevel` | initial mask level for Review, `0`–`4` |
 | `-debugHeadings` | include psalm headings as memorizable units |
 | `-debugDayOffset` | date the seeded work N days in the past |
+| `-debugSeedPlans` | adds one plan of your own and one received as shared |
+| `-debugHideBuiltInPlans` | hides the built-ins, so the sections under them fit on screen |
+| `-debugOpenURL` | hands a plan link to the URL handler. Only needed for the legacy `memorizethebible://` scheme, whose "Open in…" prompt no script can tap — a universal link can just be passed to `simctl openurl` |
+| `-debugAcceptShare` | with `-debugOpenURL`, saves the arriving plan without a tap |
+| `-debugOnboarded` | finished onboarding: no welcome sheet, no tips, no demo plan — the state to take screenshots in |
+| `-debugWriteCards` | writes the progress cards to the app container as PNGs, so the shared artifact can be inspected rather than a menu that opens it |
 
 ## Milestones
 
@@ -233,6 +284,13 @@ the verse rather than to the plan that introduced it. The completion sheet says
 so, because a demo that quietly kept something would be a surprise and one that
 quietly took something away would be worse.
 
+**Skipping counts as finishing.** Leaving the tour part-way through is a
+decision about whether it is useful, not a failure to complete it, so it is
+recorded as done and never offered again unprompted — and wherever the skip
+happened, a notice says it can be restarted from Settings. That notice is
+attached above the navigation stack rather than to the dashboard, because the
+tour can be abandoned from inside a session.
+
 Tips are derived from context — which screen, and how far the demo plan has got
 — rather than from a step counter. A counter falls out of step the moment the
 user taps back or finishes a verse early, and then the tour is either stuck or
@@ -253,6 +311,13 @@ still frame of the burst instead of animating (§12).
 
 The celebration fires only when something is finished **in that session** —
 `SessionEngine.justCompletedTarget` — so reopening a finished plan is quiet.
+
+It is a token that gets **spent**, not a counter. `AppState.celebration` is
+cleared by the burst itself once it has played, and the dashboard shows the
+overlay only while it is set. A count only ever goes up, so a dashboard that
+celebrates whenever the count is above zero celebrates again every single time
+you come home — and under Reduce Motion, where the still frame never fades on
+its own, it simply stayed there.
 
 A finished target is also nothing to continue, so the Continue card stands down
 rather than offering a dead end, and the home screen prompts you to pick a book
@@ -275,8 +340,9 @@ their verse numbering, and nothing in the app assumes verses run 1…n.
 
 ## Known gaps before shipping
 
-- **Signing.** `DEVELOPMENT_TEAM` is unset; the project builds and runs in the
-  simulator but needs a team to install on a device or reach TestFlight.
+- **Signing.** `DEVELOPMENT_TEAM` is set to `74S95ZT622`, and Associated Domains
+  is enabled on the App ID — a device build signs with the `applinks` entitlement
+  and its provisioning profile grants it. Nothing outstanding.
 - **The app is called "Memorize The Bible".**
   The name is yours to decide; changing it means `PRODUCT_NAME` and
   `INFOPLIST_KEY_CFBundleDisplayName` in the target settings, and the name still
@@ -285,5 +351,3 @@ their verse numbering, and nothing in the app assumes verses run 1…n.
   touches the Xcode package reference, so it is worth doing on a quiet diff.
 - **Reminder copy.** Now reads "Romans 8 is waiting — 3 of 39 verses." for a
   chapter and "The Roman Road — 2 of 6 verses." for a plan; still a tone call.
-- **Custom plans are not shareable or exportable.** They live only in the
-  progress file, which rides along in device backups.

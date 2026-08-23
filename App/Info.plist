@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Everything else in Info.plist is generated from build settings
+  (GENERATE_INFOPLIST_FILE). This file exists for the one key that has no
+  INFOPLIST_KEY_ equivalent: the URL scheme shared plans arrive on.
+
+  It lives outside MemorizeBible/ so the synchronized file group does not also
+  copy it into the bundle as a resource.
+-->
+<plist version="1.0">
+<dict>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>CFBundleURLName</key>
+			<string>memorizethebible.aarontrank.com.plan</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>memorizethebible</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

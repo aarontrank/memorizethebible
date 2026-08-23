@@ -51,7 +51,10 @@ struct SessionView: View {
             engine: engine,
             axis: usesSideRail ? .vertical : .horizontal,
             tip: Walkthrough.sessionTip(state: state, engine: engine),
-            onSkip: { state.endWalkthrough(completed: false) },
+            onSkip: {
+                state.endWalkthrough()
+                state.isShowingWalkthroughSkipNotice = true
+            },
             onFinish: { navigator.popToRoot() }
         )
         // One arrangement swapped for another, rather than one view tree

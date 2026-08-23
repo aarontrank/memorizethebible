@@ -123,7 +123,7 @@ struct SettingsView: View {
             }
             if state.isWalkthroughRunning {
                 Button("Stop the walkthrough", role: .destructive) {
-                    state.endWalkthrough(completed: false)
+                    state.endWalkthrough()
                 }
             }
         } header: {

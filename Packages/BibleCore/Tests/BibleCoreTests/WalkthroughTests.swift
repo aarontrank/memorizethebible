@@ -39,7 +39,7 @@ final class WalkthroughTests: XCTestCase {
         let progress = ProgressSnapshot()
         XCTAssertFalse(report.plans(in: progress).contains { $0.id == demoID })
 
-        let finished = report.endingWalkthrough(report.startingWalkthrough(progress), completed: true)
+        let finished = report.endingWalkthrough(report.startingWalkthrough(progress))
         XCTAssertFalse(
             report.plans(in: finished).contains { $0.id == demoID },
             "the demo exists only for the walkthrough"
@@ -121,16 +121,19 @@ final class WalkthroughTests: XCTestCase {
     // MARK: - Ending it
 
     func testCompletingItRecordsThat() {
-        let done = report.endingWalkthrough(report.startingWalkthrough(ProgressSnapshot()), completed: true)
+        let done = report.endingWalkthrough(report.startingWalkthrough(ProgressSnapshot()))
         XCTAssertFalse(done.onboarding.isActive)
         XCTAssertTrue(done.onboarding.hasCompleted)
         XCTAssertTrue(done.onboarding.hasBeenOffered)
     }
 
-    func testSkippingEndsItWithoutClaimingCompletion() {
-        let skipped = report.endingWalkthrough(report.startingWalkthrough(ProgressSnapshot()), completed: false)
+    func testSkippingLeavesItDoneRatherThanUnfinished() {
+        // Leaving part-way through is a decision about whether the tour is
+        // useful. Recording it as unfinished only earns the user more
+        // prompting; Settings starts it over for anyone who wants it.
+        let skipped = report.endingWalkthrough(report.startingWalkthrough(ProgressSnapshot()))
         XCTAssertFalse(skipped.onboarding.isActive)
-        XCTAssertFalse(skipped.onboarding.hasCompleted)
+        XCTAssertTrue(skipped.onboarding.hasCompleted)
         XCTAssertTrue(skipped.onboarding.hasBeenOffered, "so it is not offered again unprompted")
     }
 
@@ -140,7 +143,7 @@ final class WalkthroughTests: XCTestCase {
         let target = report.target(for: BuiltInPlans.walkthrough, in: progress)
         for ref in target.units { progress.seedWorked(ref, by: .plan(demoID), at: clock.now) }
 
-        let done = report.endingWalkthrough(progress, completed: true)
+        let done = report.endingWalkthrough(progress)
         for ref in target.units {
             XCTAssertEqual(done.state(for: ref).status, .mastered, "\(ref) was really learned")
         }
@@ -151,7 +154,7 @@ final class WalkthroughTests: XCTestCase {
         var progress = report.startingWalkthrough(ProgressSnapshot())
         progress.currentTarget = .plan(demoID)
 
-        let done = report.endingWalkthrough(progress, completed: true)
+        let done = report.endingWalkthrough(progress)
         XCTAssertNotEqual(
             done.currentTarget, .plan(demoID),
             "Continue must not point at a plan that no longer exists"
@@ -162,7 +165,7 @@ final class WalkthroughTests: XCTestCase {
         var progress = report.startingWalkthrough(ProgressSnapshot())
         progress.customPlans = [MemoryPlan(id: "mine", title: "Mine", passages: [PassageRef(thessalonians, 5, 1)])]
 
-        let done = report.endingWalkthrough(progress, completed: true)
+        let done = report.endingWalkthrough(progress)
         XCTAssertEqual(done.customPlans.map(\.id), ["mine"])
         XCTAssertTrue(report.plans(in: done).contains { $0.id == "mine" })
     }

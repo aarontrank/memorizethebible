@@ -23,6 +23,28 @@ struct PlanDetailView: View {
         }
         .navigationTitle(plan?.title ?? "Plan")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if let plan {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        // Built-in plans are already on everyone's device, so
+                        // there is nothing to send. One someone sent you can be
+                        // passed on.
+                        if !plan.isBuiltIn, let message = state.shareText(for: plan) {
+                            ShareLink(item: message, subject: Text("Memorize the Bible with me")) {
+                                Label("Share this plan", systemImage: "link")
+                            }
+                        }
+                        ProgressShareLink(
+                            content: .plan(plan, progress: state.planProgress(plan))
+                        )
+                    } label: {
+                        Image(systemName: "square.and.arrow.up")
+                    }
+                    .accessibilityLabel("Share")
+                }
+            }
+        }
     }
 
     @ViewBuilder
@@ -35,6 +57,11 @@ struct PlanDetailView: View {
                 if !plan.summary.isEmpty {
                     Text(plan.summary)
                         .font(Typography.chrome(.subheadline))
+                        .foregroundStyle(Palette.dimmedText)
+                }
+                if plan.origin == .shared {
+                    Label("Shared with you", systemImage: "person.crop.circle")
+                        .font(Typography.chrome(.footnote))
                         .foregroundStyle(Palette.dimmedText)
                 }
                 VStack(alignment: .leading, spacing: 8) {

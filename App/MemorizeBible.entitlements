@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  Lets shared-plan links open in the app instead of Safari. The matching
+	  half lives at https://aarontrank.com/.well-known/apple-app-site-association
+	  and claims /projects/memorize-the-bible/plan*.
+	-->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:aarontrank.com</string>
+	</array>
+</dict>
+</plist>

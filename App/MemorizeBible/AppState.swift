@@ -211,15 +211,89 @@ final class AppState {
         mutate { $0.hiddenBuiltInPlans.removeAll() }
     }
 
+    // MARK: - Shared plans
+
+    /// A plan link that has arrived and is waiting on the user's answer.
+    ///
+    /// Nothing is saved until they say so: opening a link someone sent must
+    /// never quietly change what is on the Plans page.
+    enum SharedPlanArrival: Identifiable {
+        /// `replacing` is the copy already saved under the same id, if any.
+        case plan(MemoryPlan, replacing: MemoryPlan?)
+        case failed(String)
+
+        var id: String {
+            switch self {
+            case let .plan(plan, _): return plan.id
+            case let .failed(message): return message
+            }
+        }
+    }
+
+    private(set) var sharedPlanArrival: SharedPlanArrival?
+
+    /// Handles an incoming URL. Returns false for anything that is not a plan
+    /// link, so the caller can leave other links alone.
+    @discardableResult
+    func open(_ url: URL) -> Bool {
+        guard PlanSharing.isPlanLink(url) else { return false }
+        do {
+            let plan = try PlanSharing.plan(from: url)
+            sharedPlanArrival = .plan(plan, replacing: progress.customPlans.first { $0.id == plan.id })
+        } catch let error as PlanSharingError {
+            sharedPlanArrival = .failed(error.message)
+        } catch {
+            sharedPlanArrival = .failed(PlanSharingError.malformed.message)
+        }
+        return true
+    }
+
+    /// Saves the waiting plan and opens it. Progress already recorded against
+    /// its verses is untouched — mastery belongs to the verse, so a plan you
+    /// are handed can arrive part-finished, and honestly so.
+    func saveSharedPlan(_ plan: MemoryPlan) {
+        var saved = plan
+        saved.origin = .shared
+        saved.createdAt = clock.now
+        addPlan(saved)
+        sharedPlanArrival = nil
+    }
+
+    func dismissSharedPlan() { sharedPlanArrival = nil }
+
+    /// The link to send someone, and the message to send with it.
+    func shareText(for plan: MemoryPlan) -> String? {
+        guard let url = try? PlanSharing.link(for: plan) else { return nil }
+        return """
+            Memorize the Bible with me — here is a plan I am working through, \
+            "\(plan.title)".
+
+            \(url.absoluteString)
+
+            Get the app: \(AppLinks.appStore.absoluteString)
+            """
+    }
+
     /// Whether the given target has been finished.
     func isComplete(_ id: MemoryTargetID) -> Bool { report.isComplete(id, in: progress) }
 
-    /// Bumped when something is finished, to set the celebration going. Not
-    /// persisted: a celebration is for the moment it happens, not for every
-    /// launch afterwards.
-    private(set) var celebrationCount = 0
+    /// Non-nil while a celebration is owed. Not persisted: a celebration is for
+    /// the moment it happens, not for every launch afterwards.
+    ///
+    /// It has to be *spent* rather than counted. A count only ever goes up, so
+    /// a dashboard that shows fireworks whenever the count is above zero shows
+    /// them again every single time you come home.
+    private(set) var celebration: Int?
+    private var celebrations = 0
 
-    func celebrate() { celebrationCount += 1 }
+    func celebrate() {
+        celebrations += 1
+        celebration = celebrations
+    }
+
+    /// Called when the burst has played, so coming back to the dashboard does
+    /// not set it going again.
+    func celebrationFinished() { celebration = nil }
 
     // MARK: - Walkthrough
 
@@ -237,9 +311,19 @@ final class AppState {
     /// Ends the walkthrough. The demo plan goes; the verses it taught stay
     /// memorized, because the user did the work and mastery belongs to the
     /// verse rather than to the plan that introduced it.
-    func endWalkthrough(completed: Bool) {
-        apply(report.endingWalkthrough(progress, completed: completed))
+    ///
+    /// Skipping counts as done. Leaving part-way through is a decision about
+    /// whether the tour is useful, not a failure to finish it, and treating it
+    /// as unfinished only earns the user more prompting. Settings starts it
+    /// over for anyone who wants it.
+    func endWalkthrough() {
+        apply(report.endingWalkthrough(progress))
     }
+
+    /// Raised wherever the walkthrough is skipped, so the user is told where it
+    /// went. Presented above the whole stack, because skipping can happen from
+    /// inside a session rather than on the dashboard.
+    var isShowingWalkthroughSkipNotice = false
 
     /// Marks the offer as made without starting, so the first launch asks once.
     func declineWalkthroughOffer() {

@@ -69,11 +69,14 @@ extension ProgressReport {
     ///
     /// The demo plan goes; the verses it taught stay memorized, because the
     /// user did actually learn them and mastery belongs to the verse.
-    public func endingWalkthrough(_ progress: ProgressSnapshot, completed: Bool) -> ProgressSnapshot {
+    /// Ending the walkthrough marks it done however it ended. Skipping it is a
+    /// decision, not a failure, and the user should not be asked again either
+    /// way; Settings starts it over.
+    public func endingWalkthrough(_ progress: ProgressSnapshot) -> ProgressSnapshot {
         var updated = progress
         updated.onboarding.isActive = false
         updated.onboarding.hasBeenOffered = true
-        if completed { updated.onboarding.hasCompleted = true }
+        updated.onboarding.hasCompleted = true
         if updated.currentTarget == .plan(BuiltInPlans.walkthroughID) {
             updated.currentTarget = .chapter(ChapterRef(.psalms, 1))
             updated.currentVerse = nil

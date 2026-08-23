@@ -22,6 +22,13 @@ struct ChapterListView: View {
                         row(chapter: chapter, ref: ref, progress: progress)
                     }
                     .listRowBackground(Palette.background)
+                    // A chapter has no screen of its own — it opens straight
+                    // into the work — so its card hangs off the row.
+                    .contextMenu {
+                        ProgressShareLink(
+                            content: .chapter(title: state.title(for: ref), progress: progress)
+                        )
+                    }
                 }
             }
         }
@@ -29,6 +36,21 @@ struct ChapterListView: View {
         .background(Palette.background)
         .navigationTitle(summary?.name ?? book.rawValue)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if let summary {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        ProgressShareLink(
+                            content: .book(summary, progress: state.bookProgress(book)),
+                            title: "Share my progress in \(summary.name)"
+                        )
+                    } label: {
+                        Image(systemName: "square.and.arrow.up")
+                    }
+                    .accessibilityLabel("Share")
+                }
+            }
+        }
     }
 
     private func row(chapter: ChapterSummary, ref: ChapterRef, progress: ChapterProgress) -> some View {

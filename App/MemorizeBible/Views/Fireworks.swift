@@ -12,6 +12,8 @@ import SwiftUI
 struct FireworksView: View {
     /// Restarting the display means handing this a new value.
     let trigger: Int
+    /// Called once the burst is spent, so the caller can take it off screen.
+    let onFinished: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var bursts: [Burst] = []
@@ -33,8 +35,16 @@ struct FireworksView: View {
         }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
-        .onAppear { restart() }
-        .onChange(of: trigger) { _, _ in restart() }
+        // One task drives both ends of the display: it starts the burst and,
+        // when the burst is over, reports back. Under Reduce Motion the still
+        // frame is on screen for the same time, so it leaves rather than
+        // sitting there for the rest of the session.
+        .task(id: trigger) {
+            restart()
+            try? await Task.sleep(for: .seconds(Self.duration))
+            guard !Task.isCancelled else { return }
+            onFinished()
+        }
     }
 
     private func restart() {

@@ -37,9 +37,61 @@
         /// sheet, so its tips can be inspected screen by screen.
         static var walkthroughRunning: Bool { arguments.contains("-debugWalkthrough") }
 
+        /// Puts onboarding in its finished state: no welcome sheet, no tips,
+        /// and no demo plan in the list. What the app looks like once someone
+        /// is actually using it, which is what a screenshot should show.
+        static var onboarded: Bool { arguments.contains("-debugOnboarded") }
+
         /// Rotates the scene to landscape on launch, so the layout can be
         /// screenshot in that orientation without a keystroke into Simulator.
         static var landscape: Bool { arguments.contains("-debugLandscape") }
+
+        /// Seeds one plan of the user's own and one that arrived shared, so
+        /// both sections of the Plans page and the share button can be seen.
+        static var seedPlans: Bool { arguments.contains("-debugSeedPlans") }
+
+        /// Hides the built-in plans, so the sections below them are on screen
+        /// without a scroll a screenshot cannot perform.
+        static var hideBuiltInPlans: Bool { arguments.contains("-debugHideBuiltInPlans") }
+
+        static let ownPlanID = "debug.own"
+        static let sharedPlanID = "debug.shared"
+
+        static var seededPlans: [MemoryPlan] {
+            guard seedPlans else { return [] }
+            return [
+                MemoryPlan(
+                    id: ownPlanID,
+                    title: "Verses for a hard week",
+                    summary: "Five to hold on to.",
+                    passages: [
+                        PassageRef(BookID("ROM"), 8, 28),
+                        PassageRef(BookID("PSA"), 23, 1, 4),
+                        PassageRef(BookID("PHP"), 4, 6, 7),
+                    ]
+                ),
+                MemoryPlan(
+                    id: sharedPlanID,
+                    title: "What Marta sent",
+                    summary: "Her favourites.",
+                    passages: [PassageRef(BookID("JHN"), 1, 1, 3)],
+                    origin: .shared
+                ),
+            ]
+        }
+
+        /// A plan link to hand straight to the URL handler on launch.
+        /// `simctl openurl` raises a system confirmation no script can tap;
+        /// this skips that prompt and exercises everything behind it.
+        static var openURL: URL? { value(for: "-debugOpenURL").flatMap(URL.init(string:)) }
+
+        /// Accepts the arriving plan without waiting for a tap on Save.
+        static var acceptShare: Bool { arguments.contains("-debugAcceptShare") }
+
+        /// Writes both progress cards to the app container as PNGs, so the
+        /// shared artifact itself can be inspected rather than a screenshot of
+        /// a menu that opens it.
+        static var writeCards: Bool { arguments.contains("-debugWriteCards") }
 
         /// Initial mask level for Review, 0...4.
         static var level: Int? { value(for: "-debugLevel").flatMap(Int.init) }
@@ -54,6 +106,16 @@
 
         /// How many days ago the seeded work happened.
         static var dayOffset: Int { value(for: "-debugDayOffset").flatMap(Int.init) ?? 0 }
+
+        private static var onboardingState: OnboardingState {
+            if walkthroughRunning {
+                return OnboardingState(isActive: true, hasBeenOffered: true)
+            }
+            if onboarded {
+                return OnboardingState(isActive: false, hasBeenOffered: true, hasCompleted: true)
+            }
+            return OnboardingState()
+        }
 
         private static func value(for flag: String) -> String? {
             guard let index = arguments.firstIndex(of: flag), index + 1 < arguments.count else {
@@ -90,17 +152,20 @@
         /// Builds a snapshot that lands the target on the requested step.
         static func seededProgress(content: ContentStore, clock: any AppClock) -> ProgressSnapshot? {
             guard let targetID else {
-                guard walkthroughRunning else { return nil }
+                guard walkthroughRunning || onboarded || seedPlans else { return nil }
                 var snapshot = ProgressSnapshot()
-                snapshot.onboarding = OnboardingState(isActive: true, hasBeenOffered: true)
+                snapshot.customPlans = seededPlans
+                if hideBuiltInPlans {
+                    snapshot.hiddenBuiltInPlans = Set(BuiltInPlans.all.map(\.id))
+                }
+                snapshot.onboarding = onboardingState
                 return snapshot
             }
             var snapshot = ProgressSnapshot()
+            snapshot.customPlans = seededPlans
             snapshot.includeSuperscriptions = includeHeadings
             snapshot.currentTarget = targetID
-            if walkthroughRunning {
-                snapshot.onboarding = OnboardingState(isActive: true, hasBeenOffered: true)
-            }
+            snapshot.onboarding = onboardingState
 
             let report = ProgressReport(content: content, clock: clock)
             let target: MemoryTarget?

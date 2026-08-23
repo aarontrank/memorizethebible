@@ -6,7 +6,6 @@ struct DashboardView: View {
     @Environment(AppState.self) private var state
     @Environment(Navigator.self) private var navigator
     @State private var showingWelcome = false
-    @State private var showingSkipReminder = false
     @State private var showingWalkthroughFinished = false
 
     var body: some View {
@@ -41,8 +40,8 @@ struct DashboardView: View {
             }
             .background(Palette.background)
             .overlay {
-                if state.celebrationCount > 0 {
-                    FireworksView(trigger: state.celebrationCount)
+                if let celebration = state.celebration {
+                    FireworksView(trigger: celebration) { state.celebrationFinished() }
                 }
             }
             // The title is drawn in the content rather than left to the
@@ -69,17 +68,17 @@ struct DashboardView: View {
                     onSkip: {
                         state.declineWalkthroughOffer()
                         showingWelcome = false
-                        showingSkipReminder = true
+                        state.isShowingWalkthroughSkipNotice = true
                     }
                 )
             }
             .sheet(isPresented: $showingWalkthroughFinished) {
                 WalkthroughFinishedView { showingWalkthroughFinished = false }
             }
-            .alert("Walkthrough skipped", isPresented: $showingSkipReminder) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text("You can run it any time from Settings.")
+            // A plan someone sent, waiting on an answer. Presented from the
+            // dashboard because a link can arrive whatever screen is showing.
+            .sheet(item: Binding(get: { state.sharedPlanArrival }, set: { if $0 == nil { state.dismissSharedPlan() } })) { arrival in
+                SharedPlanView(arrival: arrival)
             }
             // The walkthrough ends the moment its demo plan is finished, so the
             // congratulation and the plan's disappearance happen together.
@@ -115,13 +114,13 @@ struct DashboardView: View {
 
     private func finishWalkthroughIfDemoComplete() {
         guard state.isWalkthroughRunning, state.walkthroughProgress.isComplete else { return }
-        state.endWalkthrough(completed: true)
+        state.endWalkthrough()
         showingWalkthroughFinished = true
     }
 
     private func skipWalkthrough() {
-        state.endWalkthrough(completed: false)
-        showingSkipReminder = true
+        state.endWalkthrough()
+        state.isShowingWalkthroughSkipNotice = true
     }
 
     private var title: some View {

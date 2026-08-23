@@ -1,5 +1,12 @@
 import Foundation
 
+/// Where a plan came from. Built-in plans are marked separately; this
+/// distinguishes the ones you wrote from the ones someone sent you.
+public enum PlanOrigin: String, Codable, Hashable, Sendable {
+    case own
+    case shared
+}
+
 /// A curated set of verses to memorize together: the Roman Road, the Sermon on
 /// the Mount, or anything the user assembles.
 ///
@@ -29,6 +36,8 @@ public struct MemoryPlan: Codable, Hashable, Sendable, Identifiable {
     /// True for plans that ship with the app; those cannot be edited, only
     /// hidden.
     public let isBuiltIn: Bool
+    /// Only meaningful for plans that are not built in.
+    public var origin: PlanOrigin
     public var createdAt: Date?
 
     public init(
@@ -37,6 +46,7 @@ public struct MemoryPlan: Codable, Hashable, Sendable, Identifiable {
         summary: String = "",
         sections: [Section],
         isBuiltIn: Bool = false,
+        origin: PlanOrigin = .own,
         createdAt: Date? = nil
     ) {
         self.id = id
@@ -44,7 +54,26 @@ public struct MemoryPlan: Codable, Hashable, Sendable, Identifiable {
         self.summary = summary
         self.sections = sections
         self.isBuiltIn = isBuiltIn
+        self.origin = origin
         self.createdAt = createdAt
+    }
+
+    // Written by hand for one reason: `origin` arrived after plans were already
+    // on disk, and a plan saved before it must still decode. A throw here would
+    // take the whole progress file with it.
+    private enum CodingKeys: String, CodingKey {
+        case id, title, summary, sections, isBuiltIn, origin, createdAt
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        title = try container.decode(String.self, forKey: .title)
+        summary = try container.decodeIfPresent(String.self, forKey: .summary) ?? ""
+        sections = try container.decodeIfPresent([Section].self, forKey: .sections) ?? []
+        isBuiltIn = try container.decodeIfPresent(Bool.self, forKey: .isBuiltIn) ?? false
+        origin = try container.decodeIfPresent(PlanOrigin.self, forKey: .origin) ?? .own
+        createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt)
     }
 
     /// Convenience for a plan that needs no sections.
@@ -54,6 +83,7 @@ public struct MemoryPlan: Codable, Hashable, Sendable, Identifiable {
         summary: String = "",
         passages: [PassageRef],
         isBuiltIn: Bool = false,
+        origin: PlanOrigin = .own,
         createdAt: Date? = nil
     ) {
         self.init(
@@ -62,6 +92,7 @@ public struct MemoryPlan: Codable, Hashable, Sendable, Identifiable {
             summary: summary,
             sections: [Section(id: "\(id)-all", title: title, passages: passages)],
             isBuiltIn: isBuiltIn,
+            origin: origin,
             createdAt: createdAt
         )
     }
