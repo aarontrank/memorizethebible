@@ -51,10 +51,7 @@ struct SessionView: View {
             engine: engine,
             axis: usesSideRail ? .vertical : .horizontal,
             tip: Walkthrough.sessionTip(state: state, engine: engine),
-            onSkip: {
-                state.endWalkthrough()
-                state.isShowingWalkthroughSkipNotice = true
-            },
+            onSkip: { Walkthrough.skip(state: state, navigator: navigator) },
             onFinish: { navigator.popToRoot() }
         )
         // One arrangement swapped for another, rather than one view tree
@@ -69,10 +66,10 @@ struct SessionView: View {
             controls.frame(width: usesSideRail ? Metrics.controlRailWidth : nil)
         }
         // Finishing takes you home rather than back through the screens you
-        // came in by, and the celebration happens there.
+        // came in by. The celebration is already recorded in progress by then,
+        // and the home screen sets it off when it gets there.
         .onChange(of: engine.justCompletedTarget) { _, finished in
             guard finished else { return }
-            state.celebrate()
             navigator.popToRoot()
         }
     }

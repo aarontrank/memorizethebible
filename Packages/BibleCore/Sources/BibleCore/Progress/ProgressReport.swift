@@ -228,6 +228,18 @@ public struct ProgressReport {
             + progress.customPlans
     }
 
+    /// Plans the user has taken on and not yet finished — the ones the home
+    /// page offers to carry on with.
+    ///
+    /// Browsing a plan never puts it here, and neither does knowing some of its
+    /// verses from elsewhere. Finished plans leave, because a plan you have
+    /// memorized is something to review rather than something to continue.
+    public func activePlans(in progress: ProgressSnapshot) -> [MemoryPlan] {
+        plans(in: progress).filter {
+            progress.activePlans.contains($0.id) && !planProgress($0, in: progress).isComplete
+        }
+    }
+
     /// Resolves any plan by id, including the demo plan when it is not listed,
     /// so progress recorded against it still reads.
     public func plan(id: String, in progress: ProgressSnapshot) -> MemoryPlan? {

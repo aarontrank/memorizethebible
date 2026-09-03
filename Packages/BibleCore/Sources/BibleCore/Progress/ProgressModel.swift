@@ -174,7 +174,9 @@ public struct ProgressSnapshot: Codable, Hashable, Sendable {
     ///        when the app grew from Psalms to the whole Bible.
     /// 3 → 4: coverage was split from mastery, so a verse learned in one
     ///        context is no longer assumed worked in another.
-    public static let currentSchemaVersion = 4
+    /// 4 → 5: plans are taken on explicitly, so browsing one no longer puts it
+    ///        on the home page.
+    public static let currentSchemaVersion = 5
 
     public var schemaVersion: Int
     /// Progress is keyed to the translation, so adding a translation later can
@@ -192,7 +194,22 @@ public struct ProgressSnapshot: Codable, Hashable, Sendable {
     public var customPlans: [MemoryPlan]
     /// Built-in plans the user has hidden, so the list stays theirs.
     public var hiddenBuiltInPlans: Set<String>
+    /// Plans the user has said they are memorizing.
+    ///
+    /// Browsing is not committing: reading a plan, or happening to know one of
+    /// its verses from elsewhere, leaves this alone. Only Start memorizing adds
+    /// to it, which is what keeps the home page a list of work in hand rather
+    /// than a list of everything glanced at.
+    public var activePlans: Set<String>
     public var completedPlans: [String: Date]
+    /// A target that has just been finished and not yet been celebrated.
+    ///
+    /// Finishing happens in a session, two screens from the home page the
+    /// fireworks belong on, so the celebration cannot be a passing note in
+    /// memory: quitting on the way home, or a sheet arriving over the top of
+    /// it, would swallow it. It is written down when the last recitation lands
+    /// and cleared only once the burst has actually played.
+    public var pendingCelebration: MemoryTargetID?
     /// How far the cumulative pass has been carried through each plan, as a
     /// count of units. Chapters track the same thing by verse number, but a
     /// plan's verses are not consecutive, so position is what counts.
@@ -223,7 +240,9 @@ public struct ProgressSnapshot: Codable, Hashable, Sendable {
         chapterStates: [ChapterRef: ChapterState] = [:],
         customPlans: [MemoryPlan] = [],
         hiddenBuiltInPlans: Set<String> = [],
+        activePlans: Set<String> = [],
         completedPlans: [String: Date] = [:],
+        pendingCelebration: MemoryTargetID? = nil,
         planCumulativeProgress: [String: Int] = [:],
         confirmedPlanBlocks: [String: Set<Int>] = [:],
         coveredUnits: [MemoryTargetID: Set<VerseRef>] = [:],
@@ -241,7 +260,9 @@ public struct ProgressSnapshot: Codable, Hashable, Sendable {
         self.chapterStates = chapterStates
         self.customPlans = customPlans
         self.hiddenBuiltInPlans = hiddenBuiltInPlans
+        self.activePlans = activePlans
         self.completedPlans = completedPlans
+        self.pendingCelebration = pendingCelebration
         self.planCumulativeProgress = planCumulativeProgress
         self.confirmedPlanBlocks = confirmedPlanBlocks
         self.coveredUnits = coveredUnits
@@ -306,7 +327,8 @@ public struct ProgressSnapshot: Codable, Hashable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case schemaVersion, translationId, currentTarget, currentVerse
-        case verseStates, chapterStates, customPlans, hiddenBuiltInPlans, completedPlans
+        case verseStates, chapterStates, customPlans, hiddenBuiltInPlans, activePlans, completedPlans
+        case pendingCelebration
         case planCumulativeProgress, confirmedPlanBlocks, coveredUnits, onboarding
         case lastOpenedAt, notificationsEnabled, reminderTime, includeSuperscriptions
         // Schema 2 and earlier.
@@ -329,7 +351,10 @@ public struct ProgressSnapshot: Codable, Hashable, Sendable {
         customPlans = try container.decodeIfPresent([MemoryPlan].self, forKey: .customPlans) ?? []
         hiddenBuiltInPlans =
             try container.decodeIfPresent(Set<String>.self, forKey: .hiddenBuiltInPlans) ?? []
+        activePlans = try container.decodeIfPresent(Set<String>.self, forKey: .activePlans) ?? []
         completedPlans = try container.decodeIfPresent([String: Date].self, forKey: .completedPlans) ?? [:]
+        pendingCelebration =
+            try container.decodeIfPresent(MemoryTargetID.self, forKey: .pendingCelebration)
         planCumulativeProgress =
             try container.decodeIfPresent([String: Int].self, forKey: .planCumulativeProgress) ?? [:]
         confirmedPlanBlocks =
@@ -391,6 +416,9 @@ public struct ProgressSnapshot: Codable, Hashable, Sendable {
         if schemaVersion < 4 {
             backfillCoverage()
         }
+        if schemaVersion < 5 {
+            backfillActivePlans()
+        }
     }
 
     /// Before schema 4 there was no coverage, because mastery and coverage were
@@ -412,6 +440,19 @@ public struct ProgressSnapshot: Codable, Hashable, Sendable {
         }
     }
 
+    /// Before schema 5 a plan reached the home page by having work in it, so
+    /// there was nothing to activate. Every plan the user had actually worked —
+    /// inside the plan, not merely a verse of it learned in its chapter — is
+    /// taken as one they had said yes to, so nobody upgrades into an empty home
+    /// page.
+    private mutating func backfillActivePlans() {
+        activePlans.formUnion(planCumulativeProgress.keys)
+        activePlans.formUnion(confirmedPlanBlocks.keys)
+        activePlans.formUnion(completedPlans.keys)
+        activePlans.formUnion(coveredUnits.filter { !$0.value.isEmpty }.keys.compactMap(\.planID))
+        if let planID = currentTarget.planID { activePlans.insert(planID) }
+    }
+
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(schemaVersion, forKey: .schemaVersion)
@@ -428,7 +469,9 @@ public struct ProgressSnapshot: Codable, Hashable, Sendable {
         )
         try container.encode(customPlans, forKey: .customPlans)
         try container.encode(hiddenBuiltInPlans, forKey: .hiddenBuiltInPlans)
+        try container.encode(activePlans, forKey: .activePlans)
         try container.encode(completedPlans, forKey: .completedPlans)
+        try container.encodeIfPresent(pendingCelebration, forKey: .pendingCelebration)
         try container.encode(planCumulativeProgress, forKey: .planCumulativeProgress)
         try container.encode(confirmedPlanBlocks, forKey: .confirmedPlanBlocks)
         try container.encode(onboarding, forKey: .onboarding)

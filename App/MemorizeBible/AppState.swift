@@ -95,6 +95,12 @@ final class AppState {
 
     var plans: [MemoryPlan] { report.plans(in: progress) }
 
+    /// Plans the user has taken on and not yet finished — what the home page
+    /// offers to carry on with.
+    var activePlans: [MemoryPlan] { report.activePlans(in: progress) }
+
+    func isActive(_ plan: MemoryPlan) -> Bool { progress.activePlans.contains(plan.id) }
+
     func plan(id: String) -> MemoryPlan? { report.plan(id: id, in: progress) }
 
     func chapter(_ ref: ChapterRef) -> Chapter? {
@@ -189,6 +195,47 @@ final class AppState {
         }
     }
 
+    // MARK: - Taking something on
+    //
+    // Browsing is not committing. A plan or a chapter reaches the home page
+    // only when the user says they are memorizing it, so the list of what is
+    // in hand stays theirs rather than a trail of everything they have looked
+    // at. Both of these also move "Continue", because the thing you have just
+    // taken on is the thing you mean to resume.
+
+    func activatePlan(_ plan: MemoryPlan) {
+        mutate { snapshot in
+            snapshot.activePlans.insert(plan.id)
+            snapshot.currentTarget = .plan(plan.id)
+        }
+    }
+
+    /// Takes a plan off the home page without touching a verse of the work done
+    /// in it. Activating it again picks up exactly where it left off.
+    func deactivatePlan(_ plan: MemoryPlan) {
+        mutate { snapshot in
+            snapshot.activePlans.remove(plan.id)
+            // Taking it off the home page has to take it out of Continue too,
+            // or the plan is still the first thing the home page offers.
+            if snapshot.currentTarget == .plan(plan.id) {
+                snapshot.currentTarget = .chapter(ChapterRef(.psalms, 1))
+                snapshot.currentVerse = nil
+            }
+        }
+    }
+
+    /// A chapter is active once it has been started *as a chapter*, which is
+    /// the same mark a session sets on the first read — so a chapter taken on
+    /// here and a chapter worked before this screen existed look alike.
+    func activateChapter(_ ref: ChapterRef) {
+        mutate { snapshot in
+            if snapshot.state(for: ref).startedAt == nil {
+                snapshot.update(ref) { $0.startedAt = self.clock.now }
+            }
+            snapshot.currentTarget = .chapter(ref)
+        }
+    }
+
     /// Removing a plan removes only the plan. The verses it named stay
     /// memorized, because mastery belongs to the verse, not to the plan.
     func removePlan(_ plan: MemoryPlan) {
@@ -198,6 +245,8 @@ final class AppState {
             } else {
                 snapshot.customPlans.removeAll { $0.id == plan.id }
             }
+            snapshot.activePlans.remove(plan.id)
+            if snapshot.pendingCelebration == .plan(plan.id) { snapshot.pendingCelebration = nil }
             snapshot.completedPlans.removeValue(forKey: plan.id)
             snapshot.confirmedPlanBlocks.removeValue(forKey: plan.id)
             snapshot.planCumulativeProgress.removeValue(forKey: plan.id)
@@ -277,23 +326,24 @@ final class AppState {
     /// Whether the given target has been finished.
     func isComplete(_ id: MemoryTargetID) -> Bool { report.isComplete(id, in: progress) }
 
-    /// Non-nil while a celebration is owed. Not persisted: a celebration is for
-    /// the moment it happens, not for every launch afterwards.
+    /// The target whose celebration is still owed, if any.
     ///
-    /// It has to be *spent* rather than counted. A count only ever goes up, so
-    /// a dashboard that shows fireworks whenever the count is above zero shows
-    /// them again every single time you come home.
-    private(set) var celebration: Int?
-    private var celebrations = 0
+    /// Finishing is recorded in a session; the fireworks belong on the home
+    /// screen. Carrying the request in the saved progress rather than in memory
+    /// is what makes it survive the journey — and it has to be *spent* rather
+    /// than counted, or every launch after a finished chapter would set them
+    /// off again.
+    var pendingCelebration: MemoryTargetID? { progress.pendingCelebration }
 
-    func celebrate() {
-        celebrations += 1
-        celebration = celebrations
+    /// Asks for a burst. The engine does this itself when a target is finished;
+    /// this is for the debug flag and for anything else that earns one.
+    func celebrate(_ id: MemoryTargetID) {
+        mutate { $0.pendingCelebration = id }
     }
 
-    /// Called when the burst has played, so coming back to the dashboard does
-    /// not set it going again.
-    func celebrationFinished() { celebration = nil }
+    /// Called when the burst has played, so coming home again does not set it
+    /// going a second time.
+    func celebrationFinished() { mutate { $0.pendingCelebration = nil } }
 
     // MARK: - Walkthrough
 

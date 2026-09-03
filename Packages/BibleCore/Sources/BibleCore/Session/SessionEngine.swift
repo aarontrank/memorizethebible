@@ -433,6 +433,9 @@ public final class SessionEngine {
 
         justCompletedTarget = true
         mutate { snapshot in
+            // Written down rather than announced, because the fireworks happen
+            // on the home screen and this is two screens away from it.
+            snapshot.pendingCelebration = self.target.id
             if let chapterRef = self.target.chapterRef {
                 snapshot.update(chapterRef) { state in
                     if state.completedAt == nil { state.completedAt = self.clock.now }

@@ -1,8 +1,8 @@
 import BibleCore
 import SwiftUI
 
-/// The chapters of one book. A memorized chapter opens in Review; anything else
-/// opens a session.
+/// The chapters of one book. Every chapter opens its own page to be read
+/// first — nothing here starts memorizing anything.
 struct ChapterListView: View {
     let book: BookID
 
@@ -16,14 +16,10 @@ struct ChapterListView: View {
                 ForEach(summary.chapters) { chapter in
                     let ref = ChapterRef(book, chapter.number)
                     let progress = state.chapterProgress(ref)
-                    NavigationLink(
-                        value: progress.isMemorized ? Route.review(.chapter(ref)) : Route.session(.chapter(ref))
-                    ) {
+                    NavigationLink(value: Route.chapter(ref)) {
                         row(chapter: chapter, ref: ref, progress: progress)
                     }
                     .listRowBackground(Palette.background)
-                    // A chapter has no screen of its own — it opens straight
-                    // into the work — so its card hangs off the row.
                     .contextMenu {
                         ProgressShareLink(
                             content: .chapter(title: state.title(for: ref), progress: progress)
@@ -80,7 +76,7 @@ struct ChapterListView: View {
     }
 
     private func subtitle(chapter: ChapterSummary, progress: ChapterProgress) -> String {
-        if progress.isMemorized { return "Memorized · tap to review" }
+        if progress.isMemorized { return "Memorized" }
         guard progress.isStarted else { return chapter.firstLine }
         var text = "\(progress.masteredCount) of \(progress.unitCount) verses"
         // Say where they came from, so a chapter you have never opened does not

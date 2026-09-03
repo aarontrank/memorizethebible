@@ -23,8 +23,8 @@
         static var planID: String? { value(for: "-debugPlan") }
         static var seed: String? { value(for: "-debugSeed") }
 
-        /// `session` (default), `review`, `books`, `chapters`, `plans`, `plan`,
-        /// `newPlan`, `settings`, or `dashboard`.
+        /// `session` (default), `review`, `books`, `chapters`, `chapter`,
+        /// `plans`, `plan`, `newPlan`, `settings`, or `dashboard`.
         static var screen: String? { value(for: "-debugScreen") }
 
         static var includeHeadings: Bool { arguments.contains("-debugHeadings") }
@@ -140,6 +140,7 @@
             case "review": return targetID.map { Route.review($0) }
             case "books": return .books
             case "chapters": return .chapters(book)
+            case "chapter": return chapter.map { Route.chapter(ChapterRef(book, $0)) }
             case "plans": return .plans
             case "plan": return planID.map { Route.plan($0) }
             case "newPlan": return .newPlan
@@ -166,6 +167,14 @@
             snapshot.includeSuperscriptions = includeHeadings
             snapshot.currentTarget = targetID
             snapshot.onboarding = onboardingState
+            // A plan with work seeded into it is one the user took on; a plan
+            // named with no work is one they are only looking at, which is the
+            // state the plan screen is worth inspecting in.
+            if let planID = targetID.planID, planID != BuiltInPlans.walkthroughID,
+                seed != nil || workedThrough != nil
+            {
+                snapshot.activePlans.insert(planID)
+            }
 
             let report = ProgressReport(content: content, clock: clock)
             let target: MemoryTarget?
@@ -265,6 +274,7 @@
                     }
                 }
                 for ref in completed.units { snapshot.markCovered(ref, by: .plan(completedID)) }
+                snapshot.activePlans.insert(completedID)
                 snapshot.planCumulativeProgress[completedID] = completed.units.count
                 snapshot.confirmedPlanBlocks[completedID] = Set(completed.blocks.map(\.index))
                 snapshot.completedPlans[completedID] = workDate

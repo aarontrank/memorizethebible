@@ -168,6 +168,63 @@ final class SessionEngineTests: XCTestCase {
         XCTAssertEqual(engine.snapshot.state(for: ChapterRef(book, 1)).completedAt, clock.now)
     }
 
+    // MARK: - The celebration owed for finishing
+
+    func testFinishingAChapterLeavesACelebrationOwed() throws {
+        let engine = try engine()
+        XCTAssertNil(engine.snapshot.pendingCelebration, "nothing owed before it is finished")
+
+        engine.takeVerseToMastered()
+        engine.confirmCurrentStep()
+        engine.takeVerseToMastered()
+        engine.confirmCurrentStep()
+        engine.confirmCurrentStep()
+
+        XCTAssertEqual(
+            engine.snapshot.pendingCelebration, .chapter(ChapterRef(book, 1)),
+            "the burst belongs on the home screen, so finishing has to leave a note asking for it"
+        )
+    }
+
+    func testTheCelebrationIsOwedOnlyUntilItIsSpent() throws {
+        let finishing = try engine()
+        finishing.takeVerseToMastered()
+        finishing.confirmCurrentStep()
+        finishing.takeVerseToMastered()
+        finishing.confirmCurrentStep()
+        finishing.confirmCurrentStep()
+
+        var snapshot = finishing.snapshot
+        snapshot.pendingCelebration = nil
+        // Reopening something already finished must not ask for it again.
+        let reopened = try engine(snapshot: snapshot)
+        XCTAssertEqual(reopened.step, .done)
+        XCTAssertNil(reopened.snapshot.pendingCelebration)
+    }
+
+    func testAnUnfinishedChapterOwesNothing() throws {
+        let engine = try engine()
+        engine.takeVerseToMastered()
+        engine.confirmCurrentStep()
+        XCTAssertNil(engine.snapshot.pendingCelebration, "one verse of two is not a finished chapter")
+    }
+
+    func testLongChapterOwesOneCelebrationForTheWholeChapterNotOnePerStanza() throws {
+        var snapshot = ProgressSnapshot()
+        for verse in 1...24 {
+            snapshot.seedWorked(ref(3, verse), by: .chapter(ChapterRef(book, 3)), at: clock.now)
+        }
+        snapshot.update(ChapterRef(book, 3)) { $0.cumulativeConfirmedThrough = 24 }
+
+        let engine = try engine(chapter: 3, snapshot: snapshot)
+        engine.confirmCurrentStep()
+        XCTAssertNil(engine.snapshot.pendingCelebration, "one stanza of three is not the chapter")
+        engine.confirmCurrentStep()
+        XCTAssertNil(engine.snapshot.pendingCelebration)
+        engine.confirmCurrentStep()
+        XCTAssertEqual(engine.snapshot.pendingCelebration, .chapter(ChapterRef(book, 3)))
+    }
+
     func testLongChapterIsRecitedStanzaByStanza() throws {
         var snapshot = ProgressSnapshot()
         for verse in 1...24 {

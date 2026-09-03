@@ -162,3 +162,53 @@ final class BlockMaskingTests: XCTestCase {
         )
     }
 }
+
+/// §7.3: what a tap on a blank reveals, and for how much of the word.
+final class PeekRevealTests: XCTestCase {
+    func testTheFirstTapShowsOnlyTheOpeningLetter() {
+        XCTAssertEqual(PeekReveal.next(after: nil), .firstLetter)
+    }
+
+    func testTappingAgainWhileItShowsGivesTheWholeWord() {
+        XCTAssertEqual(PeekReveal.next(after: .firstLetter), .whole)
+    }
+
+    func testATapOnAWholeWordLeavesItWhole() {
+        XCTAssertEqual(PeekReveal.next(after: .whole), .whole, "there is nothing further to reveal")
+    }
+
+    func testTheFirstLetterRevealSplitsAfterOneCharacter() {
+        let (shown, hidden) = PeekReveal.firstLetter.split("Blessed")
+        XCTAssertEqual(String(shown), "B")
+        XCTAssertEqual(String(hidden), "lessed")
+    }
+
+    func testTheWholeRevealHidesNothing() {
+        let (shown, hidden) = PeekReveal.whole.split("Blessed")
+        XCTAssertEqual(String(shown), "Blessed")
+        XCTAssertEqual(String(hidden), "")
+    }
+
+    /// The two halves are drawn one after the other, so anything dropped or
+    /// duplicated here would move the glyphs and reflow the line (§7.2 #2).
+    func testTheTwoHalvesAlwaysRebuildTheWord() {
+        for word in ["I", "LORD", "Blessed", "façade", "e\u{0301}clair", "—"] {
+            for reveal in [PeekReveal.firstLetter, .whole] {
+                let (shown, hidden) = reveal.split(word)
+                XCTAssertEqual(String(shown) + String(hidden), word, "\(word) at \(reveal)")
+            }
+        }
+    }
+
+    func testASingleLetterWordIsWhollyShownByTheFirstTap() {
+        let (shown, hidden) = PeekReveal.firstLetter.split("I")
+        XCTAssertEqual(String(shown), "I")
+        XCTAssertTrue(hidden.isEmpty)
+    }
+
+    func testAnEmptyWordSplitsWithoutCrashing() {
+        let (shown, hidden) = PeekReveal.firstLetter.split("")
+        XCTAssertTrue(shown.isEmpty)
+        XCTAssertTrue(hidden.isEmpty)
+    }
+}

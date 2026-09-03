@@ -23,6 +23,33 @@ public enum MaskLevel: Int, CaseIterable, Codable, Sendable, Comparable {
     public var percentMasked: Int { rawValue * 25 }
 }
 
+/// §7.3: how much of a blanked word a peek is currently showing.
+///
+/// A peek is graded rather than all-or-nothing. The first letter is usually the
+/// whole of the help a stuck reciter needs, and giving it first keeps the rest
+/// of the verse a genuine recall. Either way the word goes back to a blank on
+/// its own after a moment.
+public enum PeekReveal: Sendable, Hashable, CaseIterable {
+    case firstLetter
+    case whole
+
+    /// A tap on a blank. The first tap opens the letter; tapping again while it
+    /// is still showing opens the word. There is nothing beyond the word.
+    public static func next(after current: PeekReveal?) -> PeekReveal {
+        current == nil ? .firstLetter : .whole
+    }
+
+    /// The word split into the part this reveal shows and the part still
+    /// hidden. Splitting rather than substituting is what keeps §7.2 #2: both
+    /// halves are drawn, the hidden one transparently, so no glyph moves.
+    public func split(_ word: String) -> (shown: Substring, hidden: Substring) {
+        switch self {
+        case .firstLetter: return (word.prefix(1), word.dropFirst())
+        case .whole: return (word[...], word[word.endIndex...])
+        }
+    }
+}
+
 /// The runtime masking rule (§7.2).
 ///
 /// There is no randomness here: `maskIndex` is baked into the content at build

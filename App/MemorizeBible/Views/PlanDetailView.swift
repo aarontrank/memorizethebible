@@ -2,10 +2,14 @@ import BibleCore
 import SwiftUI
 
 /// One plan: what it holds, how far through it you are, and the way in.
+///
+/// Reading a plan commits to nothing (§8.1). Start memorizing is what puts it
+/// on the home page, and until then it is just something you looked at.
 struct PlanDetailView: View {
     let planID: String
 
     @Environment(AppState.self) private var state
+    @Environment(Navigator.self) private var navigator
     @Environment(\.dismiss) private var dismiss
     @State private var confirmingRemoval = false
 
@@ -72,10 +76,16 @@ struct PlanDetailView: View {
                 }
                 .padding(.vertical, 4)
 
-                NavigationLink(value: progress.isComplete ? Route.review(.plan(plan.id)) : Route.session(.plan(plan.id))) {
-                    Text(progress.isComplete ? "Review this plan" : progress.isStarted ? "Continue" : "Start")
-                        .font(Typography.chrome(.headline))
-                        .foregroundStyle(Palette.text)
+                Button { open(plan: plan, progress: progress) } label: {
+                    HStack {
+                        Text(primaryTitle(plan: plan, progress: progress))
+                            .font(Typography.chrome(.headline))
+                            .foregroundStyle(Palette.text)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(Palette.verseNumber)
+                    }
                 }
                 .tip(Walkthrough.planDetailTip(state: state, planID: plan.id), caret: .bottom)
             }
@@ -95,12 +105,16 @@ struct PlanDetailView: View {
                     NavigationLink(value: Route.editPlan(plan.id)) { Text("Edit plan") }
                         .listRowBackground(Palette.background)
                 }
+                if canStop(plan: plan, progress: progress) {
+                    Button("Stop memorizing this plan") { state.deactivatePlan(plan) }
+                        .listRowBackground(Palette.background)
+                }
                 Button(plan.isBuiltIn ? "Hide this plan" : "Delete this plan", role: .destructive) {
                     confirmingRemoval = true
                 }
                 .listRowBackground(Palette.background)
             } footer: {
-                Text("Removing a plan keeps every verse you have memorized — the verses belong to their chapters, not to the plan.")
+                Text(removalFooter(plan: plan, progress: progress))
             }
         }
         .listStyle(.insetGrouped)
@@ -117,6 +131,40 @@ struct PlanDetailView: View {
         } message: {
             Text("Your memorized verses are not affected.")
         }
+    }
+
+    /// A finished plan has nothing to stop: it lives under Completed plans on
+    /// the home page, and there is no work in hand to put down.
+    private func canStop(plan: MemoryPlan, progress: PlanProgress) -> Bool {
+        state.isActive(plan) && !progress.isComplete
+    }
+
+    private func removalFooter(plan: MemoryPlan, progress: PlanProgress) -> String {
+        let removing = "Removing a plan keeps every verse you have memorized — the verses belong to their chapters, not to the plan."
+        guard canStop(plan: plan, progress: progress) else { return removing }
+        return "Stopping takes the plan off the home page and leaves it here, exactly as far along as you left it. \(removing)"
+    }
+
+    private func primaryTitle(plan: MemoryPlan, progress: PlanProgress) -> String {
+        if progress.isComplete { return "Review this plan" }
+        guard state.isActive(plan) else { return "Start memorizing" }
+        // Coverage, not mastery: knowing these verses from somewhere else is
+        // not work done inside this plan, and the session would open at the
+        // first verse either way.
+        return progress.coveredCount > 0 ? "Continue" : "Start"
+    }
+
+    private func open(plan: MemoryPlan, progress: PlanProgress) {
+        if progress.isComplete {
+            return navigator.push(.review(.plan(plan.id)))
+        }
+        guard !state.isActive(plan) else {
+            return navigator.push(.session(.plan(plan.id)))
+        }
+        // Taking a plan on ends the browsing that found it: the session opens
+        // straight off the home page, where the plan now waits.
+        state.activatePlan(plan)
+        navigator.reset(to: .session(.plan(plan.id)))
     }
 
     private func caption(_ progress: PlanProgress) -> String {

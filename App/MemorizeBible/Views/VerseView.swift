@@ -24,7 +24,16 @@ struct VerseView: View {
     /// Nil where peeking is meaningless, such as a dimmed context verse.
     var onPeek: (() -> Void)?
 
-    @State private var peekedTokens: Set<Int> = []
+    /// A peeked word: how much of it is showing, and which tap put it there.
+    /// The stamp is what lets a second tap supersede the first tap's timer
+    /// instead of being cut short by it.
+    private struct Peek: Equatable {
+        var reveal: PeekReveal
+        var stamp: Int
+    }
+
+    @State private var peeks: [Int: Peek] = [:]
+    @State private var peekCount = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -95,19 +104,29 @@ struct VerseView: View {
 
     @ViewBuilder
     private func wordView(index: Int, token: Token, isMaskedAtLevel: Bool) -> some View {
-        let isMasked = isMaskedAtLevel && !peekedTokens.contains(index)
-        let word = Text(token.text).font(font)
+        // Nil is a plain blank; a word not masked at this level is simply whole.
+        let reveal: PeekReveal? = isMaskedAtLevel ? peeks[index]?.reveal : .whole
 
-        word
+        Text(token.text)
+            .font(font)
             .foregroundStyle(foreground)
             // The glyphs stay in place and simply fade out, so the cross-fade
             // in §9 is a pure opacity change with no relayout.
-            .opacity(isMasked ? 0 : 1)
+            .opacity(reveal == .whole ? 1 : 0)
+            // The opening letter is a layer of its own, always present and
+            // only ever changing opacity. Rewriting this word's text instead
+            // would leave SwiftUI cross-fading the old rendering into the new,
+            // which flashes the whole word on the way in.
+            .overlay {
+                firstLetter(token.text).opacity(reveal == .firstLetter ? 1 : 0)
+            }
             .background {
-                blank(isVisible: isMasked)
+                // The blank stays under a first-letter peek: it is still a
+                // blank, now with the opening letter written in it.
+                blank(isVisible: reveal != .whole)
             }
             .animation(Motion.crossFade(reduceMotion: reduceMotion), value: level)
-            .animation(Motion.peekIn(reduceMotion: reduceMotion), value: peekedTokens.contains(index))
+            .animation(Motion.peekIn(reduceMotion: reduceMotion), value: peeks[index])
             // §12: expand the hit area beyond the visual bounds so short words
             // still make a usable target at small type sizes.
             .contentShape(Rectangle().inset(by: -8))
@@ -116,6 +135,16 @@ struct VerseView: View {
                 peek(index: index)
             }
             .allowsHitTesting(onPeek != nil)
+    }
+
+    /// The opening letter alone, over the word's own position. The rest of the
+    /// word is drawn in clear rather than dropped, so this layer shapes and
+    /// measures exactly like the word beneath it and the letter lands where its
+    /// own glyph would.
+    private func firstLetter(_ word: String) -> Text {
+        let (shown, hidden) = PeekReveal.firstLetter.split(word)
+        return Text(String(shown)).font(font).foregroundStyle(foreground)
+            + Text(String(hidden)).font(font).foregroundStyle(Color.clear)
     }
 
     /// The blank: fill plus an underline rule. §12 — the fill is deliberately
@@ -134,15 +163,23 @@ struct VerseView: View {
 
     // MARK: - Peek (§7.3)
 
+    /// A tap opens the first letter; a second tap, while that is still showing,
+    /// opens the whole word. Either way it closes again on its own — the help
+    /// is a glance, not a way to read the verse off the page.
     private func peek(index: Int) {
         onPeek?()
+        peekCount += 1
+        let peek = Peek(reveal: PeekReveal.next(after: peeks[index]?.reveal), stamp: peekCount)
         withAnimation(Motion.peekIn(reduceMotion: reduceMotion)) {
-            _ = peekedTokens.insert(index)
+            peeks[index] = peek
         }
         Task {
             try? await Task.sleep(for: .seconds(Motion.peekDuration))
+            // A later tap has replaced this peek and brought its own timer;
+            // this one has nothing left to close.
+            guard peeks[index] == peek else { return }
             withAnimation(Motion.peekOut(reduceMotion: reduceMotion)) {
-                _ = peekedTokens.remove(index)
+                peeks[index] = nil
             }
         }
     }

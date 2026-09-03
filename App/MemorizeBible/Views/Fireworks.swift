@@ -11,7 +11,7 @@ import SwiftUI
 /// a still burst that fades (§12).
 struct FireworksView: View {
     /// Restarting the display means handing this a new value.
-    let trigger: Int
+    let trigger: String
     /// Called once the burst is spent, so the caller can take it off screen.
     let onFinished: () -> Void
 

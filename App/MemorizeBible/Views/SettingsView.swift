@@ -4,6 +4,7 @@ import SwiftUI
 /// Settings (§8.4).
 struct SettingsView: View {
     @Environment(AppState.self) private var state
+    @Environment(Navigator.self) private var navigator
     @Environment(\.dismiss) private var dismiss
     @State private var showHeadingsConfirmation = false
     @State private var reopenedChapters: [ChapterRef] = []
@@ -123,7 +124,7 @@ struct SettingsView: View {
             }
             if state.isWalkthroughRunning {
                 Button("Stop the walkthrough", role: .destructive) {
-                    state.endWalkthrough()
+                    Walkthrough.skip(state: state, navigator: navigator)
                 }
             }
         } header: {

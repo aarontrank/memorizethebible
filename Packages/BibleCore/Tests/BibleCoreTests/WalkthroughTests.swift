@@ -88,6 +88,76 @@ final class WalkthroughTests: XCTestCase {
         XCTAssertNil(restarted.completedPlans[demoID])
     }
 
+    /// The tour decides which step it is on from what the demo has been worked
+    /// through *in this run*. Mastery cannot be that signal: the walkthrough
+    /// leaves its two verses memorized on purpose, so a second run would look
+    /// finished before it began and skip its own opening.
+    func testARestartedWalkthroughReadsAsUntouchedEvenThoughItsVersesAreKnown() {
+        var progress = report.startingWalkthrough(ProgressSnapshot())
+        let target = report.target(for: BuiltInPlans.walkthrough, in: progress)
+        for ref in target.units { progress.seedWorked(ref, by: .plan(demoID), at: clock.now) }
+        progress.confirmedPlanBlocks[demoID] = [0]
+        progress.completedPlans[demoID] = clock.now
+        progress = report.endingWalkthrough(progress)
+
+        let demo = report.planProgress(BuiltInPlans.walkthrough, in: report.startingWalkthrough(progress))
+        XCTAssertEqual(demo.coveredCount, 0, "the tour starts at its beginning again")
+        XCTAssertFalse(demo.isComplete)
+        XCTAssertEqual(demo.masteredCount, 2, "and what they learned last time is still theirs")
+    }
+
+    // MARK: - Parking what you were in the middle of
+
+    func testStartingTheWalkthroughParksWhatYouWereInTheMiddleOf() {
+        var progress = ProgressSnapshot()
+        progress.currentTarget = .plan("builtin.roman-road")
+        progress.currentVerse = VerseRef(BookID("ROM"), 6, 23)
+
+        let running = report.startingWalkthrough(progress)
+        XCTAssertEqual(running.onboarding.parkedTarget, .plan("builtin.roman-road"))
+        XCTAssertEqual(running.onboarding.parkedVerse, VerseRef(BookID("ROM"), 6, 23))
+    }
+
+    func testEndingTheWalkthroughGivesBackWhatYouWereInTheMiddleOf() {
+        var progress = ProgressSnapshot()
+        progress.currentTarget = .plan("builtin.roman-road")
+        progress.currentVerse = VerseRef(BookID("ROM"), 6, 23)
+        progress = report.startingWalkthrough(progress)
+        // Opening the demo takes the resume point, the way any session does.
+        progress.currentTarget = .plan(demoID)
+        progress.currentVerse = VerseRef(thessalonians, 5, 16)
+
+        let done = report.endingWalkthrough(progress)
+        XCTAssertEqual(
+            done.currentTarget, .plan("builtin.roman-road"),
+            "the tour borrowed Continue; it has to give it back"
+        )
+        XCTAssertEqual(done.currentVerse, VerseRef(BookID("ROM"), 6, 23))
+        XCTAssertNil(done.onboarding.parkedTarget, "and the note is spent")
+    }
+
+    func testEndingTheWalkthroughLeavesAResumePointItNeverBorrowedAlone() {
+        var progress = ProgressSnapshot()
+        progress.currentTarget = .chapter(ChapterRef(.psalms, 119))
+        progress = report.startingWalkthrough(progress)
+
+        let done = report.endingWalkthrough(progress)
+        XCTAssertEqual(done.currentTarget, .chapter(ChapterRef(.psalms, 119)))
+    }
+
+    func testTheParkedPlaceSurvivesQuittingMidWalkthrough() throws {
+        var progress = ProgressSnapshot()
+        progress.currentTarget = .plan("builtin.roman-road")
+        progress = report.startingWalkthrough(progress)
+
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let restored = try decoder.decode(ProgressSnapshot.self, from: encoder.encode(progress))
+        XCTAssertEqual(restored.onboarding, progress.onboarding)
+    }
+
     func testTheDemoRunsLikeAnyOtherPlan() {
         let progress = report.startingWalkthrough(ProgressSnapshot())
         let engine = SessionEngine(

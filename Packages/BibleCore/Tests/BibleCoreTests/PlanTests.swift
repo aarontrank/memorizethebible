@@ -18,6 +18,9 @@ final class PlanTests: XCTestCase {
             Fixture.chapter(6, verseCount: 23, book: romans),
             Fixture.chapter(10, verseCount: 21, book: romans),
             Fixture.chapter(23, verseCount: 6, book: .psalms),
+            // The walkthrough's demo plan lives here, so it can finish like any
+            // other plan in these tests.
+            Fixture.chapter(5, verseCount: 28, book: BookID("1TH")),
         ])
         report = ProgressReport(content: content, clock: clock)
     }
@@ -231,6 +234,35 @@ final class PlanTests: XCTestCase {
         XCTAssertEqual(engine.snapshot.completedPlans[plan.id], clock.now)
     }
 
+    /// Every kind of plan finishes through the same engine, so one celebration
+    /// path covers the built-in ones, the user's own, one someone shared, and
+    /// the walkthrough's demo.
+    func testFinishingAnyPlanLeavesACelebrationOwed() {
+        let shared = MemoryPlan(
+            id: "from-marta", title: "What Marta sent",
+            passages: [PassageRef(romans, 3, 23)], origin: .shared
+        )
+        let plans = [BuiltInPlans.romanRoad, BuiltInPlans.walkthrough, shared]
+        for plan in plans {
+            var snapshot = ProgressSnapshot()
+            snapshot.customPlans = [shared]
+            let units = target(plan, snapshot).units
+            guard !units.isEmpty else { continue }
+            for ref in units { snapshot.seedWorked(ref, by: .plan(plan.id), at: clock.now) }
+            snapshot.planCumulativeProgress[plan.id] = units.count
+
+            let engine = SessionEngine(
+                target: target(plan, snapshot), snapshot: snapshot, clock: clock
+            )
+            XCTAssertNil(engine.snapshot.pendingCelebration, "\(plan.title): not finished yet")
+            while case .recitation = engine.step { engine.confirmCurrentStep() }
+            XCTAssertEqual(
+                engine.snapshot.pendingCelebration, .plan(plan.id),
+                "\(plan.title) finished without asking for its celebration"
+            )
+        }
+    }
+
     // MARK: - Custom plans
 
     func testCustomPlansAppearAlongsideBuiltInOnes() {
@@ -252,6 +284,44 @@ final class PlanTests: XCTestCase {
             report.plan(id: BuiltInPlans.romanRoad.id, in: snapshot),
             "a hidden plan is still resolvable, so old progress still reads"
         )
+    }
+
+    // MARK: - Activation
+
+    func testBrowsingAPlanNeverPutsItOnTheHomePage() {
+        var snapshot = ProgressSnapshot()
+        // Every verse of the road learned elsewhere. The user has still never
+        // said they are memorizing this plan, so it is not theirs to continue.
+        for ref in target(BuiltInPlans.romanRoad).units {
+            snapshot.update(ref) { $0.status = .mastered }
+        }
+        XCTAssertTrue(report.activePlans(in: snapshot).isEmpty)
+    }
+
+    func testAnActivatedPlanIsOfferedToContinue() {
+        var snapshot = ProgressSnapshot()
+        snapshot.activePlans = [BuiltInPlans.romanRoad.id]
+        XCTAssertEqual(report.activePlans(in: snapshot).map(\.id), [BuiltInPlans.romanRoad.id])
+    }
+
+    func testAFinishedPlanIsNoLongerOfferedToContinue() {
+        var snapshot = ProgressSnapshot()
+        let plan = BuiltInPlans.romanRoad
+        snapshot.activePlans = [plan.id]
+        for ref in target(plan).units {
+            snapshot.seedWorked(ref, by: .plan(plan.id), at: clock.now)
+        }
+        snapshot.confirmedPlanBlocks[plan.id] = [0]
+
+        XCTAssertTrue(report.planProgress(plan, in: snapshot).isComplete)
+        XCTAssertTrue(report.activePlans(in: snapshot).isEmpty, "finished plans move to Completed")
+    }
+
+    func testAHiddenPlanIsNotOfferedEvenIfItWasOnceActive() {
+        var snapshot = ProgressSnapshot()
+        snapshot.activePlans = [BuiltInPlans.romanRoad.id]
+        snapshot.hiddenBuiltInPlans = [BuiltInPlans.romanRoad.id]
+        XCTAssertTrue(report.activePlans(in: snapshot).isEmpty)
     }
 
     func testACustomPlanCanSpanBooks() {

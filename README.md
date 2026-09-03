@@ -244,7 +244,7 @@ xcrun simctl launch <sim> memorizethebible.aarontrank.com \
 | `-debugCelebrate` | sets the fireworks off on launch |
 | `-debugLandscape` | rotates the scene to landscape on launch (Simulator ignores keystroke rotation from a script) |
 | `-debugSeed` | `read`, `ladder1`…`ladder4`, `cumulative`, `partial`, `recitation`, `memorized` |
-| `-debugScreen` | `session` (default), `review`, `books`, `chapters`, `plans`, `plan`, `newPlan`, `settings`, `dashboard` |
+| `-debugScreen` | `session` (default), `review`, `books`, `chapters`, `chapter`, `plans`, `plan`, `newPlan`, `settings`, `dashboard` |
 | `-debugLevel` | initial mask level for Review, `0`–`4` |
 | `-debugHeadings` | include psalm headings as memorizable units |
 | `-debugDayOffset` | date the seeded work N days in the past |
@@ -260,7 +260,7 @@ xcrun simctl launch <sim> memorizethebible.aarontrank.com \
 | # | Milestone | State |
 |---|---|---|
 | M1 | Content pipeline | done — 66 books, 1,189 chapters, 31,086 verses, all validated |
-| M2 | Data + persistence | done — atomic snapshot, schema 1→2→3→4 migrations, corrupt-file recovery |
+| M2 | Data + persistence | done — atomic snapshot, schema 1→2→3→4→5 migrations, corrupt-file recovery |
 | M3 | Masking renderer | done — zero reflow at every level and every Dynamic Type size |
 | M4 | Session engine | done — read → ladder → mastered → cumulative |
 | M5 | Confirmation pass | **removed** — see divergences above |

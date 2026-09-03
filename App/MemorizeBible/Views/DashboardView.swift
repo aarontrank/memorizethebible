@@ -7,6 +7,10 @@ struct DashboardView: View {
     @Environment(Navigator.self) private var navigator
     @State private var showingWelcome = false
     @State private var showingWalkthroughFinished = false
+    #if DEBUG
+        @State private var hasOpenedDebugRoute = false
+        @State private var hasCelebratedOnDebugLaunch = false
+    #endif
 
     var body: some View {
         @Bindable var navigator = navigator
@@ -40,8 +44,12 @@ struct DashboardView: View {
             }
             .background(Palette.background)
             .overlay {
-                if let celebration = state.celebration {
-                    FireworksView(trigger: celebration) { state.celebrationFinished() }
+                // The burst waits for a clear screen. The walkthrough's closing
+                // sheet arrives at the same moment the demo plan is finished,
+                // and fireworks behind a sheet are fireworks nobody sees — so
+                // the request stands until there is nothing on top of it.
+                if let pending = state.pendingCelebration, !isShowingASheet {
+                    FireworksView(trigger: pending.storageKey) { state.celebrationFinished() }
                 }
             }
             // The title is drawn in the content rather than left to the
@@ -90,14 +98,23 @@ struct DashboardView: View {
             }
             .onAppear {
                 #if DEBUG
-                    if DebugLaunch.celebrate { state.celebrate() }
+                    if DebugLaunch.celebrate, !hasCelebratedOnDebugLaunch {
+                        hasCelebratedOnDebugLaunch = true
+                        state.celebrate(state.progress.currentTarget)
+                    }
                 #endif
                 finishWalkthroughIfDemoComplete()
                 if state.shouldOfferWalkthrough { showingWelcome = true }
             }
             .task {
                 #if DEBUG
-                    if let route = DebugLaunch.initialRoute { navigator.path = [route] }
+                    // Once, on the first appearance. The root of a navigation
+                    // stack appears again every time the stack pops back to it,
+                    // so an unguarded push here would shove the user straight
+                    // back into the debug screen they had just left.
+                    guard !hasOpenedDebugRoute, let route = DebugLaunch.initialRoute else { return }
+                    hasOpenedDebugRoute = true
+                    navigator.path = [route]
                 #endif
             }
         }
@@ -118,9 +135,14 @@ struct DashboardView: View {
         showingWalkthroughFinished = true
     }
 
+    /// Anything presented over the home screen, so the celebration can wait for
+    /// its own moment rather than playing underneath one.
+    private var isShowingASheet: Bool {
+        showingWelcome || showingWalkthroughFinished || state.sharedPlanArrival != nil
+    }
+
     private func skipWalkthrough() {
-        state.endWalkthrough()
-        state.isShowingWalkthroughSkipNotice = true
+        Walkthrough.skip(state: state, navigator: navigator)
     }
 
     private var title: some View {
@@ -226,10 +248,9 @@ struct DashboardView: View {
 
     @ViewBuilder
     private var planSection: some View {
-        let inProgress = state.plans.filter {
-            let progress = state.planProgress($0)
-            return progress.isStarted && !progress.isComplete
-        }
+        // Only what the user has said they are memorizing. Browsing a plan, or
+        // knowing a verse of it from somewhere else, leaves this page alone.
+        let inProgress = state.activePlans
         if inProgress.isEmpty && completedPlans.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
                 sectionHeader("Plans") { navigator.push(.plans) }

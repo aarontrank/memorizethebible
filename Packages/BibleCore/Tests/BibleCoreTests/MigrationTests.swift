@@ -205,6 +205,67 @@ final class MigrationTests: XCTestCase {
         )
     }
 
+    // MARK: - Schema 4 → 5: plans are taken on explicitly
+
+    /// A schema-4 file from someone part-way through the Roman Road, plus a
+    /// verse of the Lord's Prayer mastered in its own chapter.
+    private func writeVersionFourFile() throws {
+        try write(
+            """
+            {
+              "schemaVersion": 4,
+              "translationId": "bsb",
+              "currentTarget": { "plan": { "_0": "builtin.roman-road" } },
+              "verseStates": {
+                "ROM 3:23": {"status":"mastered","highestMaskLevelCleared":4,"readCount":3,
+                             "peekCount":0,"masteredAt":"2026-08-18T09:10:00Z"},
+                "MAT 6:9": {"status":"mastered","highestMaskLevelCleared":4,"readCount":3,
+                            "peekCount":0,"masteredAt":"2026-08-18T09:20:00Z"}
+              },
+              "chapterStates": {},
+              "coveredUnits": {
+                "plan:builtin.roman-road": ["ROM 3:23"],
+                "chapter:MAT 6": ["MAT 6:9"]
+              },
+              "planCumulativeProgress": { "builtin.roman-road": 1 },
+              "confirmedPlanBlocks": {},
+              "customPlans": [],
+              "hiddenBuiltInPlans": [],
+              "completedPlans": {},
+              "lastOpenedAt": "2026-08-18T09:00:00Z",
+              "notificationsEnabled": false,
+              "includeSuperscriptions": false,
+              "reminderTime": { "hour": 7, "minute": 0 }
+            }
+            """
+        )
+    }
+
+    func testAPlanAlreadyBeingWorkedIsTreatedAsActivated() throws {
+        try writeVersionFourFile()
+        let progress = makeStore().load()
+        XCTAssertTrue(
+            progress.activePlans.contains("builtin.roman-road"),
+            "someone mid-plan must not lose it off the home page on upgrade"
+        )
+    }
+
+    func testAPlanNobodyEverStartedIsNotActivatedByTheMigration() throws {
+        try writeVersionFourFile()
+        let progress = makeStore().load()
+        XCTAssertFalse(
+            progress.activePlans.contains("builtin.lords-prayer"),
+            "a verse learned in its chapter is not a plan the user took on"
+        )
+    }
+
+    func testTheMigratedActivationSurvivesARoundTrip() throws {
+        try writeVersionFourFile()
+        let first = makeStore().load()
+        try makeStore().save(first)
+        XCTAssertEqual(makeStore().load(), first)
+    }
+
     // MARK: - Schema 1 → 4, in one step
 
     func testAVersionOneFileMigratesAllTheWay() throws {
@@ -249,6 +310,10 @@ final class MigrationTests: XCTestCase {
             MemoryPlan(id: "mine", title: "Mine", passages: [PassageRef(.psalms, 23, 1, 6)])
         ]
         progress.hiddenBuiltInPlans = ["builtin.lords-prayer"]
+        progress.activePlans = ["builtin.roman-road"]
+        // Finishing happens two screens from the home page the burst belongs
+        // on, so the request for it has to survive being quit in between.
+        progress.pendingCelebration = .chapter(ChapterRef(BookID("ROM"), 3))
         progress.confirmedPlanBlocks["builtin.roman-road"] = [0]
         progress.planCumulativeProgress["builtin.roman-road"] = 3
         progress.completedPlans["mine"] = clock.now

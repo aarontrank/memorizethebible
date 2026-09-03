@@ -12,16 +12,65 @@ import SwiftUI
 enum Walkthrough {
     static let planID = "builtin.walkthrough"
 
+    /// Ends the tour early, from wherever it was ended, and goes home.
+    ///
+    /// Home is the point: the tips were what made the screen you are on make
+    /// sense, and you are probably only on it because the walkthrough sent you
+    /// there. Stopping halfway and leaving someone inside a demo session, or
+    /// three screens deep in a plan they never chose, is a dead end. The notice
+    /// says where the walkthrough went, since the screen changes under them.
+    static func skip(state: AppState, navigator: Navigator) {
+        end(state: state)
+        navigator.popToRoot()
+    }
+
+    /// Opening a screen the tour never sent you to also ends it.
+    ///
+    /// Going to read Romans, or to your own plan, or to make a new one, is a
+    /// decision to do something else — so it is taken as skipping, and said so
+    /// with the same notice. Unlike the Skip button this leaves you exactly
+    /// where you were going: you asked for this screen, and dragging you home
+    /// from it would be the app arguing with you.
+    static func endIfOffScript(state: AppState, opening route: Route) {
+        guard state.isWalkthroughRunning, !isPartOfTheTour(route) else { return }
+        end(state: state)
+    }
+
+    /// The screens the tour itself sends you through: the plans list, the demo
+    /// plan, and working the demo. Settings is neither on the tour nor a way
+    /// off it — it is where the walkthrough is controlled from, so going there
+    /// and coming back leaves the tour running.
+    private static func isPartOfTheTour(_ route: Route) -> Bool {
+        switch route {
+        case .plans, .settings: return true
+        case let .plan(id): return id == planID
+        case let .session(target), let .review(target): return target == .plan(planID)
+        case .books, .chapters, .chapter, .newPlan, .editPlan: return false
+        }
+    }
+
+    /// Both ways out of the tour: it stops, and the user is told where it went
+    /// so they can find it again.
+    private static func end(state: AppState) {
+        state.endWalkthrough()
+        state.isShowingWalkthroughSkipNotice = true
+    }
+
     // Two dashboard tips rather than one, because they point at different
     // things: the first sends you to the plans list at the foot of the page,
     // the second to the Continue card at the top. A single tip would have to
     // sit somewhere that suits neither.
 
     /// Sits under the browse links, pointing up at All plans.
+    ///
+    /// Which step the tour is on is decided by what the demo has been worked
+    /// through *in this run* — its coverage — never by mastery. The demo's two
+    /// verses stay memorized on purpose when a tour ends, so a mastery test
+    /// would read a second run as already under way and skip its own opening.
     static func browseTip(state: AppState) -> String? {
         guard state.isWalkthroughRunning else { return nil }
         let progress = state.walkthroughProgress
-        guard !progress.isStarted, !progress.isComplete else { return nil }
+        guard progress.coveredCount == 0, !progress.isComplete else { return nil }
         return "Plans are sets of verses learned together. Open All plans to find the demo."
     }
 
@@ -29,7 +78,7 @@ enum Walkthrough {
     static func continueTip(state: AppState) -> String? {
         guard state.isWalkthroughRunning else { return nil }
         let progress = state.walkthroughProgress
-        guard progress.isStarted, !progress.isComplete else { return nil }
+        guard progress.coveredCount > 0, !progress.isComplete else { return nil }
         return "Continue picks up exactly where you left off — \(progress.masteredCount) of \(progress.unitCount) verses so far."
     }
 
@@ -46,10 +95,10 @@ enum Walkthrough {
         if progress.isComplete {
             return "Finished plans keep their place here, and on the home screen under Completed plans. Opening one now starts a review, which can never undo your progress."
         }
-        if progress.isStarted {
+        if progress.coveredCount > 0 {
             return "The bar and the count follow you as you go — \(progress.masteredCount) of \(progress.unitCount) so far. Tap Continue to carry on."
         }
-        return "Here is what the plan holds and how far through it you are. Tap Start."
+        return "Here is what the plan holds and how far through it you are. Looking is free — tap Start memorizing when you want it on your home page."
     }
 
     /// Tips inside a session on the demo plan, keyed to what the session is
