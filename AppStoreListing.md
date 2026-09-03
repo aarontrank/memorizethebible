@@ -42,20 +42,30 @@ No spaces after commas — they count against the 100. Nothing here repeats a wo
 from the name or subtitle. No competitor app names (Apple rejects those), and no
 translation names the app does not ship.
 
-## Promotional text — 144 / 170
+## Promotional text — 164 / 170
 
-Editable without shipping a build, so it is the place for anything seasonal.
+Editable without shipping a build, so it is the place for anything seasonal —
+and the one field worth pointing at whatever shipped most recently. It sits
+directly above the description, so it should never repeat the description's
+opening lines.
+
+```
+New in 1.1: read any chapter or plan right through before you commit to it. And a tap on a blank now gives you just the first letter — tap again for the whole word.
+```
+
+Being version-specific, this one needs retiring when 1.1 stops being news. The
+evergreen line it replaced, to go back to:
 
 ```
 Read a verse, then say it back as the words disappear one by one. The whole Bible, entirely offline — no account, no ads, nothing sent anywhere.
 ```
 
-## Description — 2,524 / 4,000
+## Description — 2,858 / 4,000
 
 ```
 Memorize The Bible teaches a verse the way people actually learn one.
 
-Read it aloud a few times. Then say it back as the words disappear — a quarter at a time, then half, then three quarters, until you are reciting it with nothing on the screen. Tap any blank to peek at the word underneath for a moment. Peeking is free right up to the last pass, where the whole point is to have it.
+Read it aloud a few times. Then say it back as the words disappear — a quarter at a time, then half, then three quarters, until you are reciting it with nothing on the screen. Tap any blank for the first letter of the word underneath, and again for the whole of it. Peeking is free right up to the last pass, where the whole point is to have it.
 
 After each verse you recite everything up to that point together, so a chapter becomes a passage rather than a pile of verses.
 
@@ -66,6 +76,9 @@ MEMORY PLANS
 Learn a set of verses together: the Roman Road, the Sermon on the Mount, the Lord's Prayer, the Fruit of the Spirit, or any plan you assemble yourself. A verse learned in a plan is already learned in its chapter — mastery belongs to the verse, so nothing is ever counted twice or learned twice over.
 
 Custom plans can be shared with a link. The plan travels inside the link itself, so there is no server involved and nothing to sign up for. Whoever you send it to sees exactly what it holds before deciding to keep it.
+
+LOOK BEFORE YOU COMMIT
+Read any book, chapter or plan straight through before deciding anything. Nothing reaches your home screen until you tap Start memorizing, so what waits for you there is only ever the work you actually chose — and you can put a plan back down again without losing a verse of it.
 
 WORDS THAT STAY PUT
 A blank is the same word drawn invisibly, so a line breaks in exactly the same place at every level and at every text size. Nothing reflows as you go, and the shape of the verse on the page becomes part of how you remember it.
@@ -87,7 +100,23 @@ A gentle daily reminder is available, scheduled on your device, and off until yo
 Scripture quotations are from the Berean Standard Bible (BSB), which has been dedicated to the public domain. Free resources are available at BereanBible.com.
 ```
 
-## What's New — 231
+## What's New — 495
+
+For 1.1. The walkthrough and navigation fixes are deliberately left out: nobody
+who has not hit them would recognise them, and this field reads better when
+every line is something a user would notice.
+
+```
+Browse before you commit.
+
+Open any book, chapter or plan and read it in full. Nothing reaches your home screen until you tap Start memorizing, so you can look around without cluttering up what you are actually working on — and take a plan back off again whenever you like, without losing a verse of it.
+
+Peeking is gentler. Tap a blank once for its first letter, again for the whole word. Either way it closes on its own.
+
+Finishing something is celebrated properly now, wherever you finish it.
+```
+
+The 1.0 text, for the record:
 
 ```
 The first release.
@@ -147,17 +176,10 @@ scheduled on-device by iOS and involve no push server, so nothing is collected.
 
 ## App Review notes
 
-```
-No account or sign-in is required — open the app and everything is available immediately.
-
-The app makes no network requests at all, so nothing needs to be reachable for review. There are no in-app purchases and no advertising.
-
-A first-run walkthrough offers a two-verse demo plan; it can be skipped, and rerun from Settings.
-
-Scripture is the Berean Standard Bible, which has been dedicated to the public domain (BereanBible.com). The attribution appears in Settings > About.
-
-Universal links: shared-plan links point at https://aarontrank.com/projects/memorize-the-bible/plan and open in the app. Opening one without the app installed lands on a page explaining what the link is.
-```
+The full text lives in `AppReviewNotes.md` — it answers the seven questions
+Apple's Guideline 2.1 template asks, and belongs in the **App Review Information
+→ Notes** field permanently, not just in a reply. A thin Notes field is what
+triggers that rejection in the first place.
 
 ---
 
@@ -170,7 +192,7 @@ order, since the first two are what most people ever see.
 |---|---|---|
 | 1 | `1-ladder.png` | Psalm 23 mid-ladder, blanks in the active verse — the mechanic, first |
 | 2 | `2-full-mask.png` | The same verse fully hidden, "I know it" |
-| 3 | `3-home.png` | Continue, plans in progress, a completed plan, 9 of 31,086 |
+| 3 | `3-home.png` | Continue, a completed plan, a chapter in progress, 9 of 31,086 |
 | 4 | `4-plans.png` | Built-in plans and one of your own |
 | 5 | `5-plan-detail.png` | The Roman Road, 3 of 6, verse by verse |
 | 6 | `6-review.png` | A memorized psalm reviewed whole at 50% hidden |
@@ -180,6 +202,11 @@ order, since the first two are what most people ever see.
 | `iphone-6.5/` | 1284 × 2778 | iPhone 6.5" — what App Store Connect asked for |
 | `iphone-6.9/` | 1320 × 2868 | iPhone 6.9" — the newer slot, if the record offers it |
 | `ipad-13/` | 2064 × 2752 | iPad 12.9"/13" |
+
+The iPad set is shot on iPadOS 17.5 rather than 26.x on purpose: iPadOS 26 draws
+a window-resize grabber in the bottom-right corner, which is system chrome but
+reads as a rendering defect in a store screenshot. Screenshots carry no
+latest-OS requirement — only Apple's review recording does.
 
 Regenerate with `scripts/shoot.sh <sim-udid> <outdir>` after pinning the status
 bar to Apple's convention:
