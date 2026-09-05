@@ -283,6 +283,10 @@ struct DashboardView: View {
                             ProgressBar(fraction: progress.fraction, height: 4).frame(width: 56)
                         }
                         .padding(.vertical, 4)
+                        // The row is the target, not the words in it: a Spacer
+                        // draws nothing and so catches nothing, which left the
+                        // gap between the title and the bar dead to the touch.
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                 }
@@ -320,6 +324,7 @@ struct DashboardView: View {
                                 .foregroundStyle(Palette.dimmedText)
                         }
                         .padding(.vertical, 4)
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("\(plan.title). Memorized. Opens review.")
@@ -373,6 +378,7 @@ struct DashboardView: View {
                                 .foregroundStyle(Palette.dimmedText)
                         }
                         .padding(.vertical, 6)
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                 }
@@ -395,6 +401,7 @@ struct DashboardView: View {
                 ProgressBar(fraction: chapter.fraction, height: 4).frame(width: 56)
             }
             .padding(.vertical, 4)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
@@ -438,6 +445,7 @@ struct DashboardView: View {
                 Image(systemName: "chevron.right").foregroundStyle(Palette.verseNumber)
             }
             .padding(.vertical, 12)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }

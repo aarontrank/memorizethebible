@@ -50,6 +50,10 @@ struct SettingsView: View {
                     set: { enabled in Task { await state.setNotificationsEnabled(enabled) } }
                 )
             )
+            // §9: the app tints everything with the ink colour, which inverts to
+            // near-white in dark mode — and a near-white switch carrying a white
+            // knob reads as one blank capsule. The gold says "on" in both.
+            .tint(Palette.accent)
             if state.progress.notificationsEnabled {
                 DatePicker(
                     "Reminder time",
@@ -98,6 +102,7 @@ struct SettingsView: View {
                     }
                 )
             )
+            .tint(Palette.accent)
         } header: {
             // Scoped to Psalms in the header, because that is genuinely the
             // only book with these: 116 psalms carry one and nothing else in
@@ -162,6 +167,10 @@ struct SettingsView: View {
                             resetStage = 0
                         }
                         .buttonStyle(.borderedProminent)
+                        // Red for its own sake — this is the irreversible one —
+                        // and because the app's ink tint would otherwise fill it
+                        // with the same colour as its label.
+                        .tint(.red)
                     }
                 }
                 .padding(.vertical, 4)

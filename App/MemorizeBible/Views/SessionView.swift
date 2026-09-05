@@ -253,7 +253,7 @@ struct ControlBar: View {
     private var missTitle: String {
         switch engine.step {
         case .cumulative, .recitation: return "Need help"
-        case .carriedOver: return "Memorize it again"
+        case .carriedOver: return "Memorize again"
         default: return "Not yet"
         }
     }
@@ -345,6 +345,10 @@ struct SecondaryButtonStyle: ButtonStyle {
         configuration.label
             .font(Typography.chrome(.headline))
             .foregroundStyle(Palette.text)
+            // Room either side of the words. The control bar sizes this button
+            // to fit its label, so without padding of its own the longest label
+            // sits flush against both ends of the capsule.
+            .padding(.horizontal, 16)
             .frame(maxWidth: .infinity, minHeight: Metrics.minimumTapTarget)
             .frame(minWidth: 96)
             .background(Palette.progressTrack, in: RoundedRectangle(cornerRadius: 12))

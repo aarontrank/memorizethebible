@@ -11,6 +11,14 @@ enum Palette {
     static let verseNumber = Color("verseNumber", light: 0xA0A0A5, dark: 0x76767A)
     static let progressFill = Color("progressFill", light: 0x1C1C1E, dark: 0xF2F2F2)
     static let progressTrack = Color("progressTrack", light: 0xEAEAEC, dark: 0x2A2A2C)
+    /// The brand gold at the weight a *filled* control needs.
+    ///
+    /// `blankUnderline` is the same gold, poured for a hairline rule under a
+    /// blank. A switch is a solid fill with a white knob riding on it, so light
+    /// mode takes a deeper measure of it: the pale gold that reads perfectly as
+    /// a 1pt rule leaves the knob all but invisible against it. Dark mode keeps
+    /// the underline's own value, which already sits well against the page.
+    static let accent = Color("accent", light: 0xC97F04, dark: 0xC9A94A)
 }
 
 extension Color {
