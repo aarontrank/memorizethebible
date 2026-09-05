@@ -33,10 +33,12 @@ struct MilestoneListView: View {
                 Text(milestone.kind.title)
                     .font(Typography.scripture(.body))
                     .foregroundStyle(Palette.text)
-                Text(milestone.caption)
-                    .font(Typography.chrome(.caption))
-                    .foregroundStyle(Palette.dimmedText)
-                    .lineLimit(1)
+                if let subject = milestone.subject {
+                    Text(subject)
+                        .font(Typography.chrome(.caption))
+                        .foregroundStyle(Palette.dimmedText)
+                        .lineLimit(1)
+                }
             }
             Spacer(minLength: 12)
             Text(milestone.achievedAt.formatted(.dateTime.day().month(.abbreviated).year()))
@@ -99,8 +101,12 @@ struct MilestoneDetailView: View {
                     .aspectRatio(1, contentMode: .fit)
                     .frame(maxWidth: Metrics.scriptureMaxWidth)
                     .accessibilityLabel(
-                        "\(milestone.kind.title). \(milestone.caption). "
-                            + milestone.achievedAt.formatted(.dateTime.day().month(.wide).year())
+                        [
+                            milestone.kind.title, milestone.subject,
+                            milestone.verse.flatMap { state.verseText($0) },
+                            milestone.achievedAt.formatted(.dateTime.day().month(.wide).year()),
+                        ]
+                        .compactMap { $0 }.joined(separator: ". ")
                     )
             } else {
                 ProgressView().frame(height: 200)
@@ -124,7 +130,11 @@ struct MilestoneDetailView: View {
         .frame(maxWidth: Metrics.scriptureMaxWidth)
         .frame(maxWidth: .infinity)
         // Drawn once when the screen opens rather than on every redraw.
-        .task { card = MilestoneCardView.rendered(milestone) }
+        .task {
+            card = MilestoneCardView.rendered(
+                milestone, verseText: milestone.verse.flatMap { state.verseText($0) }
+            )
+        }
     }
 }
 

@@ -85,6 +85,51 @@ final class MilestoneTests: XCTestCase {
         XCTAssertEqual(milestones.first?.achievedAt, day(5))
     }
 
+    func testTheFirstVerseCarriesItsOwnReference() {
+        var progress = ProgressSnapshot()
+        master([psalm23(4)], from: 5, in: &progress)
+
+        let first = report.milestones(in: progress).first
+        XCTAssertEqual(first?.verse, psalm23(4), "the certificate prints the verse itself")
+        XCTAssertEqual(first?.subject, "Psalm 23:4")
+    }
+
+    /// A batch mastered in one moment must not pick a different "first" each
+    /// time the list is built.
+    func testTheFirstVerseIsSettledWhenSeveralShareAMoment() {
+        var progress = ProgressSnapshot()
+        for verse in [4, 2, 6, 1] {
+            progress.update(psalm23(verse)) { state in
+                state.status = .mastered
+                state.masteredAt = self.day(5)
+            }
+        }
+        let picks = (0..<8).map { _ in report.milestones(in: progress).first?.verse }
+        XCTAssertEqual(Set(picks).count, 1, "the same verse every time")
+        XCTAssertEqual(picks.first, psalm23(1))
+    }
+
+    /// A psalm heading is not verse nought.
+    func testAHeadingIsNamedByItsChapter() throws {
+        content = try Fixture.store([
+            Fixture.chapter(23, verseCount: 6, book: .psalms, hasSuperscription: true)
+        ])
+        report = ProgressReport(content: content, clock: clock)
+
+        var progress = ProgressSnapshot()
+        master([VerseRef(.psalms, 23, 0)], from: 5, in: &progress)
+        XCTAssertEqual(report.milestones(in: progress).first?.subject, "Psalm 23")
+    }
+
+    func testTheCountingMilestonesNameNothingInParticular() {
+        var progress = ProgressSnapshot()
+        master((1...10).map { VerseRef(romans, 3, $0) }, from: 1, in: &progress)
+
+        let ten = report.milestones(in: progress).first { $0.kind == .tenVerses }
+        XCTAssertNil(ten?.subject, "the title already says what it is")
+        XCTAssertNil(ten?.verse, "no single verse earned it")
+    }
+
     func testTenVersesIsEarnedOnTheTenth() {
         var progress = ProgressSnapshot()
         let refs = (1...10).map { VerseRef(romans, 3, $0) }

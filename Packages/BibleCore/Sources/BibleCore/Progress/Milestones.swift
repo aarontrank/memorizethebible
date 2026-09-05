@@ -16,25 +16,12 @@ public enum MilestoneKind: String, Codable, Sendable, CaseIterable {
     /// The name on the certificate.
     public var title: String {
         switch self {
-        case .firstVerse: return "First verse"
-        case .tenVerses: return "Ten verses"
-        case .firstChapter: return "A whole chapter"
-        case .firstPlan: return "A whole plan"
-        case .firstBook: return "A whole book"
-        case .hundredVerses: return "A hundred verses"
-        }
-    }
-
-    /// The line beneath the name, for milestones no single passage earned.
-    /// Where one did — a chapter, a book, a plan — its name is shown instead.
-    public var caption: String {
-        switch self {
-        case .firstVerse: return "The first one, by heart"
-        case .tenVerses: return "Ten verses, by heart"
-        case .firstChapter: return "A chapter, start to finish"
-        case .firstPlan: return "A plan, all the way through"
-        case .firstBook: return "Every chapter of a book"
-        case .hundredVerses: return "A hundred verses, by heart"
+        case .firstVerse: return "First verse memorized"
+        case .tenVerses: return "Ten verses memorized"
+        case .firstChapter: return "A whole chapter memorized"
+        case .firstPlan: return "A whole plan memorized"
+        case .firstBook: return "A whole book memorized"
+        case .hundredVerses: return "A hundred verses memorized"
         }
     }
 
@@ -48,20 +35,25 @@ public enum MilestoneKind: String, Codable, Sendable, CaseIterable {
 public struct Milestone: Hashable, Sendable, Identifiable {
     public let kind: MilestoneKind
     public let achievedAt: Date
-    /// What earned it, where one thing did: "Psalm 23", "Jude", "The Roman
-    /// Road". Nil for the counting ones, which no single passage earns.
+    /// What earned it, where one thing did: "Psalm 23:1", "Psalm 23", "Jude",
+    /// "The Roman Road". Nil for the counting ones, which no single passage
+    /// earns and which the title already names in full.
     public let subject: String?
+    /// The verse itself, for the milestone that is one verse. The certificate
+    /// prints it; nothing else needs it, so it is looked up there rather than
+    /// carried around as text.
+    public let verse: VerseRef?
 
     public var id: MilestoneKind { kind }
 
-    public init(kind: MilestoneKind, achievedAt: Date, subject: String? = nil) {
+    public init(
+        kind: MilestoneKind, achievedAt: Date, subject: String? = nil, verse: VerseRef? = nil
+    ) {
         self.kind = kind
         self.achievedAt = achievedAt
         self.subject = subject
+        self.verse = verse
     }
-
-    /// What the certificate says under the name.
-    public var caption: String { subject ?? kind.caption }
 }
 
 extension ProgressReport {
@@ -77,17 +69,28 @@ extension ProgressReport {
 
         // Undated masteries are skipped rather than guessed at: a verse with no
         // date cannot be placed in a sequence, and this whole list is a
-        // sequence.
-        let masteredOn = progress.verseStates.values
-            .compactMap { $0.status == .mastered ? $0.masteredAt : nil }
-            .sorted()
-        func dateOfVerse(_ n: Int) -> Date? {
-            masteredOn.count >= n ? masteredOn[n - 1] : nil
+        // sequence. Verses mastered in the same moment — a batch, an import —
+        // are settled by reference, so "the first one" never changes its mind.
+        let mastered = progress.verseStates
+            .compactMap { ref, state -> (ref: VerseRef, date: Date)? in
+                guard state.status == .mastered, let date = state.masteredAt else { return nil }
+                return (ref, date)
+            }
+            .sorted { ($0.date, $0.ref.storageKey) < ($1.date, $1.ref.storageKey) }
+
+        if let first = mastered.first {
+            earned.append(
+                Milestone(
+                    kind: .firstVerse, achievedAt: first.date,
+                    subject: verseTitle(first.ref), verse: first.ref
+                )
+            )
         }
-        if let date = dateOfVerse(1) { earned.append(Milestone(kind: .firstVerse, achievedAt: date)) }
-        if let date = dateOfVerse(10) { earned.append(Milestone(kind: .tenVerses, achievedAt: date)) }
-        if let date = dateOfVerse(100) {
-            earned.append(Milestone(kind: .hundredVerses, achievedAt: date))
+        if mastered.count >= 10 {
+            earned.append(Milestone(kind: .tenVerses, achievedAt: mastered[9].date))
+        }
+        if mastered.count >= 100 {
+            earned.append(Milestone(kind: .hundredVerses, achievedAt: mastered[99].date))
         }
 
         if let (ref, date) = firstFinishedChapter(in: progress) {
@@ -105,6 +108,12 @@ extension ProgressReport {
         return earned.sorted {
             ($0.achievedAt, $0.kind.rank) < ($1.achievedAt, $1.kind.rank)
         }
+    }
+
+    /// "Psalm 23:1". A psalm heading is not a numbered verse, so it is named by
+    /// its chapter rather than as verse nought.
+    private func verseTitle(_ ref: VerseRef) -> String {
+        ref.isSuperscription ? content.title(for: ref.chapterRef) : content.title(for: ref)
     }
 
     private func firstFinishedChapter(in progress: ProgressSnapshot) -> (ChapterRef, Date)? {

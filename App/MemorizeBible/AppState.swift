@@ -117,6 +117,14 @@ final class AppState {
 
     func title(for ref: ChapterRef) -> String { content.title(for: ref) }
 
+    /// One verse, as words. Loaded only where a verse is actually printed —
+    /// the milestone certificate — rather than carried around in progress.
+    func verseText(_ ref: VerseRef) -> String? {
+        guard let chapter = chapter(ref.chapterRef) else { return nil }
+        if ref.isSuperscription { return chapter.superscription?.text }
+        return chapter.verses.first { $0.number == ref.verse }?.text
+    }
+
     // MARK: - Display
 
     /// The verses a target covers, grouped by chapter for display. A plan shows
