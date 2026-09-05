@@ -7,6 +7,21 @@ struct DashboardView: View {
     @Environment(Navigator.self) private var navigator
     @State private var showingWelcome = false
     @State private var showingWalkthroughFinished = false
+    /// The burst playing right now, if any. Held here rather than read
+    /// straight from progress, because the request is spent the moment it is
+    /// shown — see `claimCelebration`.
+    @State private var celebration: Celebration?
+
+    /// A burst and the moment it stops being owed.
+    ///
+    /// The deadline is wall-clock rather than view lifetime: the home screen
+    /// comes and goes every time the stack pushes and pops, and tying the end
+    /// of the celebration to that either cuts it off during the pop that
+    /// brought us here, or leaves it owed forever.
+    private struct Celebration: Equatable {
+        let id: String
+        let expires: Date
+    }
     #if DEBUG
         @State private var hasOpenedDebugRoute = false
         @State private var hasCelebratedOnDebugLaunch = false
@@ -44,12 +59,8 @@ struct DashboardView: View {
             }
             .background(Palette.background)
             .overlay {
-                // The burst waits for a clear screen. The walkthrough's closing
-                // sheet arrives at the same moment the demo plan is finished,
-                // and fireworks behind a sheet are fireworks nobody sees — so
-                // the request stands until there is nothing on top of it.
-                if let pending = state.pendingCelebration, !isShowingASheet {
-                    FireworksView(trigger: pending.storageKey) { state.celebrationFinished() }
+                if let celebration {
+                    FireworksView(trigger: celebration.id) { self.celebration = nil }
                 }
             }
             // The title is drawn in the content rather than left to the
@@ -96,6 +107,11 @@ struct DashboardView: View {
             .onChange(of: state.isWalkthroughRunning ? state.walkthroughProgress.isComplete : false) {
                 _, _ in finishWalkthroughIfDemoComplete()
             }
+            .onChange(of: state.pendingCelebration) { _, _ in claimCelebration() }
+            // A sheet closing is the other moment a celebration can become
+            // showable: the walkthrough's closing sheet arrives at the same
+            // instant the demo plan is finished.
+            .onChange(of: isShowingASheet) { _, _ in claimCelebration() }
             .onAppear {
                 #if DEBUG
                     if DebugLaunch.celebrate, !hasCelebratedOnDebugLaunch {
@@ -105,6 +121,8 @@ struct DashboardView: View {
                 #endif
                 finishWalkthroughIfDemoComplete()
                 if state.shouldOfferWalkthrough { showingWelcome = true }
+                expireStaleCelebration()
+                claimCelebration()
             }
             .task {
                 #if DEBUG
@@ -133,6 +151,29 @@ struct DashboardView: View {
         guard state.isWalkthroughRunning, state.walkthroughProgress.isComplete else { return }
         state.endWalkthrough()
         showingWalkthroughFinished = true
+    }
+
+    /// Takes the celebration the progress file is holding and plays it.
+    ///
+    /// Spent the moment the burst is on screen rather than when it ends: while
+    /// the request stood for the whole two and a half seconds, walking off the
+    /// home screen mid-burst left it owed, and it fired again on every return
+    /// — for something finished long before, as many times as you came back.
+    ///
+    /// It still waits for a clear screen. Fireworks behind a sheet are
+    /// fireworks nobody sees.
+    private func claimCelebration() {
+        guard celebration == nil, !isShowingASheet, let pending = state.pendingCelebration
+        else { return }
+        celebration = Celebration(id: pending.storageKey, expires: .now + FireworksView.duration)
+        state.celebrationFinished()
+    }
+
+    /// Drops a burst whose moment has passed, so coming back to this screen
+    /// long after finishing something does not set it off again.
+    private func expireStaleCelebration() {
+        guard let celebration, Date.now >= celebration.expires else { return }
+        self.celebration = nil
     }
 
     /// Anything presented over the home screen, so the celebration can wait for

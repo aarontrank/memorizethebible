@@ -19,7 +19,7 @@ struct FireworksView: View {
     @State private var bursts: [Burst] = []
     @State private var startedAt = Date()
 
-    private static let duration: TimeInterval = 2.6
+    static let duration: TimeInterval = 2.6
 
     var body: some View {
         TimelineView(.animation(paused: reduceMotion)) { timeline in
