@@ -40,7 +40,6 @@ struct MemorizeBibleApp: App {
                 // inside the URL, so this reads it and asks; it fetches nothing.
                 .onOpenURL { state.open($0) }
                 #if DEBUG
-                    .onAppear { if DebugLaunch.writeCards { DebugCards.write() } }
                     .onAppear {
                         guard let url = DebugLaunch.openURL else { return }
                         state.open(url)
@@ -83,42 +82,3 @@ struct MemorizeBibleApp: App {
     }
 #endif
 
-#if DEBUG
-    /// Renders the share cards straight to disk for inspection.
-    private enum DebugCards {
-        @MainActor
-        static func write() {
-            let samples: [(String, ProgressCardContent)] = [
-                (
-                    "card-progress",
-                    ProgressCardContent(
-                        kind: "Chapter", title: "Psalm 23",
-                        memorized: 4, total: 6, isComplete: false, completedAt: nil
-                    )
-                ),
-                (
-                    "card-complete",
-                    ProgressCardContent(
-                        kind: "Plan", title: "The Roman Road",
-                        memorized: 6, total: 6, isComplete: true, completedAt: Date()
-                    )
-                ),
-                (
-                    "card-long",
-                    ProgressCardContent(
-                        kind: "Plan", title: "Verses for a hard week, and the ones after it",
-                        memorized: 112, total: 431, isComplete: false, completedAt: nil
-                    )
-                ),
-            ]
-            let directory = URL.documentsDirectory
-            for (name, content) in samples {
-                let renderer = ImageRenderer(content: ProgressCardView(content: content))
-                renderer.scale = 2
-                renderer.proposedSize = ProposedViewSize(ProgressCardView.size)
-                guard let data = renderer.uiImage?.pngData() else { continue }
-                try? data.write(to: directory.appendingPathComponent("\(name).png"))
-            }
-        }
-    }
-#endif

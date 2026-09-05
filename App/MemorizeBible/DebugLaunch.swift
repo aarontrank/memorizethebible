@@ -90,8 +90,6 @@
 
         /// Writes both progress cards to the app container as PNGs, so the
         /// shared artifact itself can be inspected rather than a screenshot of
-        /// a menu that opens it.
-        static var writeCards: Bool { arguments.contains("-debugWriteCards") }
 
         /// Initial mask level for Review, 0...4.
         static var level: Int? { value(for: "-debugLevel").flatMap(Int.init) }

@@ -10,6 +10,8 @@ enum Route: Hashable {
     case chapters(BookID)
     case chapter(ChapterRef)
     case plans
+    case milestones
+    case milestone(MilestoneKind)
     case plan(String)
     case newPlan
     case editPlan(String)
@@ -32,6 +34,8 @@ extension View {
                 case let .chapters(book): ChapterListView(book: book)
                 case let .chapter(ref): ChapterDetailView(ref: ref)
                 case .plans: PlanListView()
+                case .milestones: MilestoneListView()
+                case let .milestone(kind): MilestoneDetailView(kind: kind)
                 case let .plan(id): PlanDetailView(planID: id)
                 case .newPlan: PlanEditorView(existing: nil)
                 case let .editPlan(id): PlanEditorView(planID: id)

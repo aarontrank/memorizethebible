@@ -45,7 +45,8 @@ enum Walkthrough {
         case .plans, .settings: return true
         case let .plan(id): return id == planID
         case let .session(target), let .review(target): return target == .plan(planID)
-        case .books, .chapters, .chapter, .newPlan, .editPlan: return false
+        case .books, .chapters, .chapter, .newPlan, .editPlan, .milestones, .milestone:
+            return false
         }
     }
 

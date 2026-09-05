@@ -101,6 +101,11 @@ final class AppState {
 
     func isActive(_ plan: MemoryPlan) -> Bool { progress.activePlans.contains(plan.id) }
 
+    /// Everything earned, oldest first. Worked out from the record each time
+    /// rather than stored, so it can never fall out of step with the progress
+    /// it describes.
+    var milestones: [Milestone] { report.milestones(in: progress) }
+
     func plan(id: String) -> MemoryPlan? { report.plan(id: id, in: progress) }
 
     func chapter(_ ref: ChapterRef) -> Chapter? {

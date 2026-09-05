@@ -253,7 +253,6 @@ xcrun simctl launch <sim> memorizethebible.aarontrank.com \
 | `-debugOpenURL` | hands a plan link to the URL handler. Only needed for the legacy `memorizethebible://` scheme, whose "Open in…" prompt no script can tap — a universal link can just be passed to `simctl openurl` |
 | `-debugAcceptShare` | with `-debugOpenURL`, saves the arriving plan without a tap |
 | `-debugOnboarded` | finished onboarding: no welcome sheet, no tips, no demo plan — the state to take screenshots in |
-| `-debugWriteCards` | writes the progress cards to the app container as PNGs, so the shared artifact can be inspected rather than a menu that opens it |
 
 ## Milestones
 

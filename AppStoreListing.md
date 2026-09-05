@@ -60,7 +60,7 @@ evergreen line it replaced, to go back to:
 Read a verse, then say it back as the words disappear one by one. The whole Bible, entirely offline — no account, no ads, nothing sent anywhere.
 ```
 
-## Description — 2,858 / 4,000
+## Description — 2,954 / 4,000
 
 ```
 Memorize The Bible teaches a verse the way people actually learn one.
@@ -86,8 +86,8 @@ A blank is the same word drawn invisibly, so a line breaks in exactly the same p
 REVIEW WHAT YOU KNOW
 A memorized chapter can be reviewed whole, at whatever level of masking you choose. Reviewing can never undo the progress you have made.
 
-SHARE WHERE YOU ARE
-Draw a card showing your progress with a chapter, a book or a plan — and a rather more celebratory one when you finish.
+MILESTONES WORTH KEEPING
+Your first verse. Ten of them. A whole chapter, a whole book, a whole plan. A hundred verses. Each one is a certificate you can look back at in the order you earned them, and send to whoever would want to know.
 
 COMPLETELY OFFLINE
 No account. No sign-in. No network requests of any kind. No analytics, no tracking, no advertising, no subscription, no in-app purchases. Your progress lives in a single file on your device and goes nowhere else. The app has no networking code in it at all.

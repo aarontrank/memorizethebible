@@ -44,6 +44,7 @@ struct DashboardView: View {
                         )
                     planSection
                     completedPlanSection
+                    milestonesSection
                     inProgressSection
                     memorizedSection
                     browseLinks
@@ -395,6 +396,49 @@ struct DashboardView: View {
                 }
             }
         }
+    }
+
+    // MARK: - Milestones
+
+    /// The last couple earned, newest first. The header opens the full list;
+    /// a mark opens its own certificate.
+    @ViewBuilder
+    private var milestonesSection: some View {
+        let recent = Array(state.milestones.reversed().prefix(2))
+        if !recent.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                sectionHeader("Milestones") { navigator.push(.milestones) }
+                HStack(spacing: 12) {
+                    ForEach(recent) { milestone in
+                        Button { navigator.push(.milestone(milestone.kind)) } label: {
+                            milestoneChip(milestone)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    Spacer(minLength: 0)
+                }
+            }
+        }
+    }
+
+    private func milestoneChip(_ milestone: Milestone) -> some View {
+        HStack(spacing: 10) {
+            MilestoneMark(kind: milestone.kind, diameter: 34)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(milestone.kind.title)
+                    .font(Typography.chrome(.footnote).weight(.medium))
+                    .foregroundStyle(Palette.text)
+                Text(milestone.achievedAt.formatted(.dateTime.day().month(.abbreviated)))
+                    .font(Typography.chrome(.caption2))
+                    .foregroundStyle(Palette.dimmedText)
+            }
+        }
+        .padding(.vertical, 8)
+        .padding(.horizontal, 12)
+        .background(Palette.progressTrack.opacity(0.45), in: RoundedRectangle(cornerRadius: 12))
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+        .accessibilityHint("Opens the certificate")
     }
 
     /// Completed plans, most recently finished first.

@@ -28,24 +28,14 @@ struct PlanDetailView: View {
         .navigationTitle(plan?.title ?? "Plan")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            if let plan {
+            // Sharing the plan itself stays; the progress card it used to sit
+            // beside is now a milestone certificate.
+            if let plan, !plan.isBuiltIn, let message = state.shareText(for: plan) {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        // Built-in plans are already on everyone's device, so
-                        // there is nothing to send. One someone sent you can be
-                        // passed on.
-                        if !plan.isBuiltIn, let message = state.shareText(for: plan) {
-                            ShareLink(item: message, subject: Text("Memorize the Bible with me")) {
-                                Label("Share this plan", systemImage: "link")
-                            }
-                        }
-                        ProgressShareLink(
-                            content: .plan(plan, progress: state.planProgress(plan))
-                        )
-                    } label: {
+                    ShareLink(item: message, subject: Text("Memorize the Bible with me")) {
                         Image(systemName: "square.and.arrow.up")
                     }
-                    .accessibilityLabel("Share")
+                    .accessibilityLabel("Share this plan")
                 }
             }
         }

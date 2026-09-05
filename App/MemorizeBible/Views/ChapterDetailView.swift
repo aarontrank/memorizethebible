@@ -40,18 +40,6 @@ struct ChapterDetailView: View {
         .background(Palette.background)
         .navigationTitle(state.title(for: ref))
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    ProgressShareLink(
-                        content: .chapter(title: state.title(for: ref), progress: progress)
-                    )
-                } label: {
-                    Image(systemName: "square.and.arrow.up")
-                }
-                .accessibilityLabel("Share")
-            }
-        }
     }
 
     private var content: some View {
