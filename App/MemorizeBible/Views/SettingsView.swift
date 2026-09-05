@@ -16,6 +16,7 @@ struct SettingsView: View {
             remindersSection
             walkthroughSection
             headingsSection
+            spreadTheWordSection
             aboutSection
             resetSection
         }
@@ -138,6 +139,38 @@ struct SettingsView: View {
             Text("A guided tour of a plan, using a demo of two very short verses. The demo appears only while the walkthrough is running.")
         }
     }
+
+    // MARK: - Rating and sharing
+
+    /// The two outward-facing things a person might want to do on purpose.
+    ///
+    /// Rating links to the App Store rather than calling `requestReview`: a
+    /// button someone went looking for has to work every time they press it,
+    /// and the system prompt makes no such promise. See `AppLinks`.
+    private var spreadTheWordSection: some View {
+        Section {
+            Link(destination: AppLinks.appStoreReview) {
+                Label("Rate this app", systemImage: "star")
+            }
+            ShareLink(
+                item: AppLinks.appStore,
+                subject: Text("Memorize The Bible"),
+                message: Text(Self.shareMessage)
+            ) {
+                Label("Tell someone about it", systemImage: "square.and.arrow.up")
+            }
+        } header: {
+            Text("Spread the word")
+        } footer: {
+            Text("Sharing sends a link and nothing else — no contacts are read and nothing is recorded.")
+        }
+    }
+
+    /// Goes in the body of whatever they send. The link travels beside it, so
+    /// this says what the app is rather than repeating the address.
+    private static let shareMessage =
+        "Memorize The Bible — read a verse, then say it back as the words disappear "
+        + "one by one. The whole Bible, entirely offline, with no account."
 
     // MARK: - About (§8.4, §13)
 
