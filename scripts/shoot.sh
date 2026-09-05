@@ -1,6 +1,9 @@
 #!/bin/zsh
 # App Store screenshots. See AppStoreListing.md.
-# shoot.sh <sim-udid> <outdir> — runs the standard six shots.
+# shoot.sh <sim-udid> <outdir> — runs the standard shots.
+#
+# The rating prompt is suppressed under -uiDebug (see DebugLaunch), because
+# two of these seeds now earn it and it would land on top of the shot.
 SIM=$1; OUT=$2
 mkdir -p "$OUT"
 one() {
@@ -17,3 +20,6 @@ one 3-home        -debugScreen dashboard -debugBook PSA -debugChapter 23 -debugS
 one 4-plans       -debugScreen plans -debugSeedPlans
 one 5-plan-detail -debugScreen plan -debugPlan builtin.roman-road -debugWorkedThrough 3
 one 6-review      -debugBook PSA -debugChapter 23 -debugSeed memorized -debugScreen review -debugLevel 2
+one 7-milestone   -debugBook PSA -debugChapter 23 -debugSeed memorized -debugScreen milestone -debugMilestone firstVerse
+one 8-milestones  -debugBook PSA -debugChapter 23 -debugSeed memorized -debugScreen milestones
+one 9-chapter     -debugScreen chapter -debugBook PSA -debugChapter 23

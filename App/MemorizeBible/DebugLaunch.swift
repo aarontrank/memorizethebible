@@ -50,6 +50,16 @@
         /// both sections of the Plans page and the share button can be seen.
         static var seedPlans: Bool { arguments.contains("-debugSeedPlans") }
 
+        /// Apple's rating prompt is an interruption, and two of the standard
+        /// screenshots now earn it. Off under `-uiDebug` unless asked for.
+        static var reviewPrompt: Bool { arguments.contains("-debugReviewPrompt") }
+
+        /// Which milestone certificate to open, by kind: `-debugMilestone
+        /// firstVerse`.
+        static var milestone: MilestoneKind? {
+            value(for: "-debugMilestone").flatMap(MilestoneKind.init(rawValue:))
+        }
+
         /// Hides the built-in plans, so the sections below them are on screen
         /// without a scroll a screenshot cannot perform.
         static var hideBuiltInPlans: Bool { arguments.contains("-debugHideBuiltInPlans") }
@@ -140,6 +150,8 @@
             case "chapters": return .chapters(book)
             case "chapter": return chapter.map { Route.chapter(ChapterRef(book, $0)) }
             case "plans": return .plans
+            case "milestones": return .milestones
+            case "milestone": return milestone.map { Route.milestone($0) }
             case "plan": return planID.map { Route.plan($0) }
             case "newPlan": return .newPlan
             case "settings": return .settings
@@ -158,6 +170,7 @@
                     snapshot.hiddenBuiltInPlans = Set(BuiltInPlans.all.map(\.id))
                 }
                 snapshot.onboarding = onboardingState
+                snapshot.hasAskedForReview = !reviewPrompt
                 return snapshot
             }
             var snapshot = ProgressSnapshot()
@@ -165,6 +178,7 @@
             snapshot.includeSuperscriptions = includeHeadings
             snapshot.currentTarget = targetID
             snapshot.onboarding = onboardingState
+            snapshot.hasAskedForReview = !reviewPrompt
             // A plan with work seeded into it is one the user took on; a plan
             // named with no work is one they are only looking at, which is the
             // state the plan screen is worth inspecting in.

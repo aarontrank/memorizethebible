@@ -185,17 +185,18 @@ triggers that rejection in the first place.
 
 ## Screenshots
 
-Three sets under `AppStore/screenshots/`. Same six shots each; upload in this
+Three sets under `AppStore/screenshots/`. Same seven shots each; upload in this
 order, since the first two are what most people ever see.
 
 | # | File | Shows |
 |---|---|---|
 | 1 | `1-ladder.png` | Psalm 23 mid-ladder, blanks in the active verse — the mechanic, first |
 | 2 | `2-full-mask.png` | The same verse fully hidden, "I know it" |
-| 3 | `3-home.png` | Continue, a completed plan, a chapter in progress, 9 of 31,086 |
+| 3 | `3-home.png` | Continue, what is in progress, a completed plan, milestones, 9 of 31,086 |
 | 4 | `4-plans.png` | Built-in plans and one of your own |
 | 5 | `5-plan-detail.png` | The Roman Road, 3 of 6, verse by verse |
 | 6 | `6-review.png` | A memorized psalm reviewed whole at 50% hidden |
+| 7 | `7-milestone.png` | The first-verse certificate, carrying the verse it was earned on |
 
 | Folder | Size | Slot |
 |---|---|---|
@@ -221,6 +222,11 @@ xcrun simctl status_bar $SIM override --time "9:41" \
 state, so no welcome sheet, no tips, and no demo plan in the list — what the app
 looks like once someone is actually using it. Shooting without it puts the
 walkthrough's tip bubble and demo plan into the marketing shots.
+
+Apple's rating prompt is suppressed under `-uiDebug` for the same reason: two of
+these seeds — a completed plan for shot 3, a plan of your own for shot 4 — now
+earn it, and it would land on top of the screenshot. `-debugReviewPrompt` turns
+it back on for testing it.
 
 ### iPad support is new, and adapted rather than designed
 
