@@ -45,7 +45,6 @@ struct DashboardView: View {
                     planSection
                     completedPlanSection
                     milestonesSection
-                    inProgressSection
                     memorizedSection
                     browseLinks
                         .tip(browseTip, caret: .top, onSkip: state.isWalkthroughRunning ? skipWalkthrough : nil)
@@ -313,10 +312,14 @@ struct DashboardView: View {
 
     @ViewBuilder
     private var planSection: some View {
-        // Only what the user has said they are memorizing. Browsing a plan, or
+        // Everything in hand, plans and chapters alike. To the person looking
+        // at the page these are one thing — work started and not finished —
+        // and two headers for it read as a filing system rather than a list.
+        // Only what the user has said they are memorizing: browsing a plan, or
         // knowing a verse of it from somewhere else, leaves this page alone.
-        let inProgress = state.activePlans
-        if inProgress.isEmpty && completedPlans.isEmpty {
+        let plans = state.activePlans
+        let chapters = state.report.chaptersInProgress(in: state.progress)
+        if plans.isEmpty, chapters.isEmpty, completedPlans.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
                 sectionHeader("Plans") { navigator.push(.plans) }
                 Text("Memorize a set of verses together — the Roman Road, the Sermon on the Mount, or your own.")
@@ -327,36 +330,41 @@ struct DashboardView: View {
                     .buttonStyle(.plain)
                     .foregroundStyle(Palette.text)
             }
-        } else if !inProgress.isEmpty {
+        } else if !plans.isEmpty || !chapters.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
                 // Named as a pair with "Completed plans" below, so neither
                 // header reads as though it holds every plan.
                 sectionHeader("Plans in progress") { navigator.push(.plans) }
-                ForEach(inProgress) { plan in
-                    let progress = state.planProgress(plan)
-                    Button { navigator.push(.plan(plan.id)) } label: {
-                        HStack(spacing: 12) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(plan.title)
-                                    .font(Typography.scripture(.body))
-                                    .foregroundStyle(Palette.text)
-                                Text("\(progress.masteredCount) of \(progress.unitCount) verses")
-                                    .font(Typography.chrome(.caption))
-                                    .foregroundStyle(Palette.dimmedText)
-                            }
-                            Spacer(minLength: 12)
-                            ProgressBar(fraction: progress.fraction, height: 4).frame(width: 56)
-                        }
-                        .padding(.vertical, 4)
-                        // The row is the target, not the words in it: a Spacer
-                        // draws nothing and so catches nothing, which left the
-                        // gap between the title and the bar dead to the touch.
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
+                ForEach(plans) { plan in planRow(plan) }
+                ForEach(chapters.prefix(6)) { chapter in
+                    chapterRow(chapter, route: .session(.chapter(chapter.ref)))
                 }
             }
         }
+    }
+
+    private func planRow(_ plan: MemoryPlan) -> some View {
+        let progress = state.planProgress(plan)
+        return Button { navigator.push(.plan(plan.id)) } label: {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(plan.title)
+                        .font(Typography.scripture(.body))
+                        .foregroundStyle(Palette.text)
+                    Text("\(progress.masteredCount) of \(progress.unitCount) verses")
+                        .font(Typography.chrome(.caption))
+                        .foregroundStyle(Palette.dimmedText)
+                }
+                Spacer(minLength: 12)
+                ProgressBar(fraction: progress.fraction, height: 4).frame(width: 56)
+            }
+            .padding(.vertical, 4)
+            // The row is the target, not the words in it: a Spacer draws
+            // nothing and so catches nothing, which left the gap between the
+            // title and the bar dead to the touch.
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     /// Plans finished, kept where they can be picked up again. Review is the
@@ -452,21 +460,6 @@ struct DashboardView: View {
     }
 
     // MARK: - In progress and memorized
-
-    @ViewBuilder
-    private var inProgressSection: some View {
-        // Chapters the user has actually worked as chapters. A plan quoting a
-        // verse from Romans 3 does not make Romans 3 something you started.
-        let chapters = state.report.chaptersInProgress(in: state.progress)
-        if !chapters.isEmpty {
-            VStack(alignment: .leading, spacing: 10) {
-                sectionHeader("In progress", action: nil)
-                ForEach(chapters.prefix(6)) { chapter in
-                    chapterRow(chapter, route: .session(.chapter(chapter.ref)))
-                }
-            }
-        }
-    }
 
     @ViewBuilder
     private var memorizedSection: some View {
