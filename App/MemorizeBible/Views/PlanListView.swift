@@ -63,6 +63,16 @@ struct PlanListView: View {
         .listStyle(.insetGrouped)
         .navigationTitle("Plans")
         .navigationBarTitleDisplayMode(.inline)
+        // Saving a new plan lands back here, which is the moment someone has
+        // just built one of their own. See `askForReviewIfEarned` on the home
+        // screen for why the system prompt does the asking.
+        .onAppear {
+            guard state.shouldAskForReview else { return }
+            Task {
+                try? await Task.sleep(for: .seconds(1))
+                if ReviewPrompt.ask() { state.markReviewRequested() }
+            }
+        }
     }
 
     private var builtIn: [MemoryPlan] { state.plans.filter(\.isBuiltIn) }

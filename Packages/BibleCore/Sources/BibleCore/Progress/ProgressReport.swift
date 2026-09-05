@@ -240,6 +240,23 @@ public struct ProgressReport {
         }
     }
 
+    /// Whether the user has done the kind of thing worth being asked about.
+    ///
+    /// Two moments qualify: finishing a plan, or building one of their own.
+    /// Both are someone choosing this app rather than merely opening it.
+    ///
+    /// The walkthrough's demo counts for neither. It is two verses long and the
+    /// app put it there, so finishing it says nothing about whether anyone
+    /// likes this enough to say so in public. A plan someone was *sent* is not
+    /// one they made either — though finishing it certainly counts.
+    public func hasEarnedReviewRequest(in progress: ProgressSnapshot) -> Bool {
+        let finishedAPlan = progress.completedPlans.keys.contains {
+            $0 != BuiltInPlans.walkthroughID
+        }
+        let builtOne = progress.customPlans.contains { $0.origin == .own }
+        return finishedAPlan || builtOne
+    }
+
     /// Resolves any plan by id, including the demo plan when it is not listed,
     /// so progress recorded against it still reads.
     public func plan(id: String, in progress: ProgressSnapshot) -> MemoryPlan? {

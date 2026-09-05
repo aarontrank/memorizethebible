@@ -341,6 +341,19 @@ final class AppState {
         mutate { $0.pendingCelebration = id }
     }
 
+    // MARK: - Asking what they think
+
+    /// Whether now is a moment to ask for a review, and whether we still may.
+    ///
+    /// Once only, ever. Apple's prompt decides for itself whether to appear and
+    /// tells us nothing either way, so the most this app can honestly track is
+    /// that it has had its turn.
+    var shouldAskForReview: Bool {
+        !progress.hasAskedForReview && report.hasEarnedReviewRequest(in: progress)
+    }
+
+    func markReviewRequested() { mutate { $0.hasAskedForReview = true } }
+
     /// Called when the burst has played, so coming home again does not set it
     /// going a second time.
     func celebrationFinished() { mutate { $0.pendingCelebration = nil } }

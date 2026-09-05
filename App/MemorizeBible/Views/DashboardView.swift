@@ -108,6 +108,9 @@ struct DashboardView: View {
                 _, _ in finishWalkthroughIfDemoComplete()
             }
             .onChange(of: state.pendingCelebration) { _, _ in claimCelebration() }
+            // Once the fireworks have finished is the moment to ask: they have
+            // just finished something, and nothing is in their way.
+            .onChange(of: celebration) { _, _ in askForReviewIfEarned() }
             // A sheet closing is the other moment a celebration can become
             // showable: the walkthrough's closing sheet arrives at the same
             // instant the demo plan is finished.
@@ -123,6 +126,7 @@ struct DashboardView: View {
                 if state.shouldOfferWalkthrough { showingWelcome = true }
                 expireStaleCelebration()
                 claimCelebration()
+                askForReviewIfEarned()
             }
             .task {
                 #if DEBUG
@@ -167,6 +171,25 @@ struct DashboardView: View {
         else { return }
         celebration = Celebration(id: pending.storageKey, expires: .now + FireworksView.duration)
         state.celebrationFinished()
+    }
+
+    /// Asks what the user makes of the app, at a moment they have just finished
+    /// something and there is nothing on top of the screen.
+    ///
+    /// Apple's own prompt does the asking. Its wording is theirs, so it is
+    /// acceptable by construction; it is dismissible; and the system decides
+    /// whether to show it at all and how often. Nothing here is withheld until
+    /// they answer — guideline 3.2.2(x) forbids making any part of an app
+    /// conditional on rating it, and this asks beside the work, never in front
+    /// of it.
+    private func askForReviewIfEarned() {
+        guard state.shouldAskForReview, celebration == nil, !isShowingASheet else { return }
+        // Claimed before it is shown, so a second appearance cannot ask again.
+        Task {
+            // A beat, so it does not arrive on top of the screen settling.
+            try? await Task.sleep(for: .seconds(1))
+            if ReviewPrompt.ask() { state.markReviewRequested() }
+        }
     }
 
     /// Drops a burst whose moment has passed, so coming back to this screen

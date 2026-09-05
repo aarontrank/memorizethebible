@@ -210,6 +210,12 @@ public struct ProgressSnapshot: Codable, Hashable, Sendable {
     /// it, would swallow it. It is written down when the last recitation lands
     /// and cleared only once the burst has actually played.
     public var pendingCelebration: MemoryTargetID?
+    /// Whether the app has already asked what the user thinks of it.
+    ///
+    /// Apple's prompt decides for itself whether to appear, and says nothing
+    /// back about whether it did. All this app can honestly record is that it
+    /// has had its turn — so it takes that turn once, ever.
+    public var hasAskedForReview: Bool
     /// How far the cumulative pass has been carried through each plan, as a
     /// count of units. Chapters track the same thing by verse number, but a
     /// plan's verses are not consecutive, so position is what counts.
@@ -243,6 +249,7 @@ public struct ProgressSnapshot: Codable, Hashable, Sendable {
         activePlans: Set<String> = [],
         completedPlans: [String: Date] = [:],
         pendingCelebration: MemoryTargetID? = nil,
+        hasAskedForReview: Bool = false,
         planCumulativeProgress: [String: Int] = [:],
         confirmedPlanBlocks: [String: Set<Int>] = [:],
         coveredUnits: [MemoryTargetID: Set<VerseRef>] = [:],
@@ -263,6 +270,7 @@ public struct ProgressSnapshot: Codable, Hashable, Sendable {
         self.activePlans = activePlans
         self.completedPlans = completedPlans
         self.pendingCelebration = pendingCelebration
+        self.hasAskedForReview = hasAskedForReview
         self.planCumulativeProgress = planCumulativeProgress
         self.confirmedPlanBlocks = confirmedPlanBlocks
         self.coveredUnits = coveredUnits
@@ -328,7 +336,7 @@ public struct ProgressSnapshot: Codable, Hashable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case schemaVersion, translationId, currentTarget, currentVerse
         case verseStates, chapterStates, customPlans, hiddenBuiltInPlans, activePlans, completedPlans
-        case pendingCelebration
+        case pendingCelebration, hasAskedForReview
         case planCumulativeProgress, confirmedPlanBlocks, coveredUnits, onboarding
         case lastOpenedAt, notificationsEnabled, reminderTime, includeSuperscriptions
         // Schema 2 and earlier.
@@ -355,6 +363,8 @@ public struct ProgressSnapshot: Codable, Hashable, Sendable {
         completedPlans = try container.decodeIfPresent([String: Date].self, forKey: .completedPlans) ?? [:]
         pendingCelebration =
             try container.decodeIfPresent(MemoryTargetID.self, forKey: .pendingCelebration)
+        hasAskedForReview =
+            try container.decodeIfPresent(Bool.self, forKey: .hasAskedForReview) ?? false
         planCumulativeProgress =
             try container.decodeIfPresent([String: Int].self, forKey: .planCumulativeProgress) ?? [:]
         confirmedPlanBlocks =
@@ -472,6 +482,7 @@ public struct ProgressSnapshot: Codable, Hashable, Sendable {
         try container.encode(activePlans, forKey: .activePlans)
         try container.encode(completedPlans, forKey: .completedPlans)
         try container.encodeIfPresent(pendingCelebration, forKey: .pendingCelebration)
+        try container.encode(hasAskedForReview, forKey: .hasAskedForReview)
         try container.encode(planCumulativeProgress, forKey: .planCumulativeProgress)
         try container.encode(confirmedPlanBlocks, forKey: .confirmedPlanBlocks)
         try container.encode(onboarding, forKey: .onboarding)
