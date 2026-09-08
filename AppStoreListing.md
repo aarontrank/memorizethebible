@@ -42,7 +42,7 @@ No spaces after commas — they count against the 100. Nothing here repeats a wo
 from the name or subtitle. No competitor app names (Apple rejects those), and no
 translation names the app does not ship.
 
-## Promotional text — 164 / 170
+## Promotional text — 167 / 170
 
 Editable without shipping a build, so it is the place for anything seasonal —
 and the one field worth pointing at whatever shipped most recently. It sits
@@ -50,10 +50,10 @@ directly above the description, so it should never repeat the description's
 opening lines.
 
 ```
-New in 1.1: read any chapter or plan right through before you commit to it. And a tap on a blank now gives you just the first letter — tap again for the whole word.
+New in 1.4: your progress follows you. A new iPhone or iPad picks up exactly where the old one left off, and work done on two devices is combined rather than replaced.
 ```
 
-Being version-specific, this one needs retiring when 1.1 stops being news. The
+Being version-specific, this one needs retiring when 1.4 stops being news. The
 evergreen line it replaced, to go back to:
 
 ```
@@ -102,11 +102,24 @@ A gentle daily reminder is available, scheduled on your device, and off until yo
 Scripture quotations are from the Berean Standard Bible (BSB), which has been dedicated to the public domain. Free resources are available at BereanBible.com.
 ```
 
-## What's New — 495
+## What's New — 497
 
-For 1.1. The walkthrough and navigation fixes are deliberately left out: nobody
-who has not hit them would recognise them, and this field reads better when
-every line is something a user would notice.
+For 1.4, which is the iCloud release. Milestones and the rest shipped in 1.3,
+so re-announcing them here would spend the field telling people about something
+they already have.
+
+```
+Your progress now follows you.
+
+Everything you have memorized is kept in your own iCloud account, so a new iPhone or iPad picks up exactly where the old one left off. Work done on two devices is combined rather than replaced — nothing you have learned is ever dropped for being the older copy.
+
+It goes to your iCloud and nowhere else: there is still no account to make and no server on our side. Settings > iCloud turns it off in one tap, and with it off your progress stays on this device alone.
+```
+
+Earlier releases, for the record. The 1.3 text was written straight into App
+Store Connect and never copied back here.
+
+1.1:
 
 ```
 Browse before you commit.
@@ -118,17 +131,7 @@ Peeking is gentler. Tap a blank once for its first letter, again for the whole w
 Finishing something is celebrated properly now, wherever you finish it.
 ```
 
-A draft for the release that adds iCloud sync, whenever it ships:
-
-```
-Your progress now follows you.
-
-Turn on iCloud sync — it is on by default, in Settings — and everything you have memorized is kept in your own iCloud account, so a new iPhone or iPad picks up exactly where the old one left off. Work done on two devices is combined rather than replaced: nothing you have learned is ever dropped for being the older copy.
-
-It goes to your iCloud and nowhere else, and one tap turns it off.
-```
-
-The 1.0 text, for the record:
+1.0:
 
 ```
 The first release.
