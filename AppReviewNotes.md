@@ -37,12 +37,14 @@ No setup, account, or credentials — every feature works immediately on first l
 
 On first launch the app offers a short optional walkthrough built on a two-verse demo plan that shows the whole loop in about a minute. That is the fastest way to see the core functionality. It can be skipped, and rerun from Settings > Walkthrough.
 
-Direct routes: a chapter is All books > book > chapter, which opens it to read, with Start memorizing at the foot. A plan is All plans > plan (e.g. "The Roman Road") > Start memorizing. To create and share one: New plan > add passages > Save, then use the share button. Any completed chapter or plan reopens in Review. The optional daily reminder is Settings > Daily reminder.
+Direct routes: a chapter is All books > book > chapter, which opens it to read, with Start memorizing at the foot. A plan is All plans > plan (e.g. "The Roman Road") > Start memorizing. To create and share one: New plan > add passages > Save, then use the share button. Any completed chapter or plan reopens in Review. The optional daily reminder is Settings > Daily reminder, and iCloud sync is Settings > iCloud.
 
 5. EXTERNAL SERVICES, TOOLS, AND PLATFORMS
-None. No backend, API, data provider, authentication, payment processor, ad network, analytics, crash reporting, or AI service. The app contains no networking code and makes no network requests; it works identically in airplane mode. The only frameworks linked are Apple's own.
+None. No backend, API, data provider, authentication, payment processor, ad network, analytics, crash reporting, or AI service. The only frameworks linked are Apple's own, and the app contains no networking code of its own: every screen works in airplane mode.
 
-Scripture is bundled in the binary and progress is one file in the app's container, so nothing is uploaded. Plans shared as links carry the plan encoded in the URL itself — no server is involved.
+The one thing that leaves the device is the user's progress record, and only into their own iCloud account, through iCloud key-value storage (Settings > iCloud, on by default, one tap from off). It is a single small value written by iOS on the app's behalf; there is no server on our side to receive it and no way for us to read it. Progress is stored on the device either way, and the app is fully functional with the setting off or with nobody signed into iCloud.
+
+Scripture is bundled in the binary, so no text is ever fetched. Plans shared as links carry the plan encoded in the URL itself — no server is involved there either.
 
 6. REGIONAL DIFFERENCES
 None. Identical in every region and storefront: no geo-gating, no region-specific content, no regional pricing (free, no in-app purchases), and no server that could vary. One English translation, English-only interface.
@@ -51,7 +53,9 @@ None. Identical in every region and storefront: no geo-gating, no region-specifi
 The text is the Berean Standard Bible (BSB), which its publisher has formally dedicated to the public domain; it may be used freely without permission, licence, or royalty. The publisher's statement and the text are at https://bereanbible.com. The app carries the requested attribution in Settings > About and in the App Store description, naming the BSB, its public-domain dedication, and BereanBible.com. No other third-party material is included, and the app is not in a regulated industry.
 
 ALSO WORTH KNOWING
-No account exists, so no demo credentials are possible. No user-generated content is shared to any service, so reporting and blocking do not apply. Notification authorization is the only permission the app requests. App Privacy is "Data Not Collected": no code path can transmit anything.
+No account exists, so no demo credentials are possible. No user-generated content is shared to any service, so reporting and blocking do not apply. Notification authorization is the only permission the app requests; iCloud sync uses the account already on the device and asks for nothing.
+
+App Privacy is "Data Not Collected". The only thing that ever leaves the device is the progress record, and it goes to the user's own iCloud account, which is not accessible to the developer — Apple's definition of collection excludes exactly that. Nothing is transmitted to us, because there is nothing on our side to transmit it to.
 ```
 
 ---

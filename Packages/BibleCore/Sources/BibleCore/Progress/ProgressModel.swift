@@ -1,6 +1,7 @@
 import Foundation
 
-// Read-write local progress. Design doc §6. Never leaves the device (§13).
+// Read-write local progress. Design doc §6. Stays on the device unless the
+// user asks for it to be kept in their own iCloud account (§13.1).
 
 public struct VerseState: Codable, Hashable, Sendable {
     public enum Status: String, Codable, Sendable {
@@ -236,6 +237,24 @@ public struct ProgressSnapshot: Codable, Hashable, Sendable {
     public var reminderTime: ReminderTime
     /// §7.5, default off: superscriptions are displayed but not memorized.
     public var includeSuperscriptions: Bool
+    /// When this record last actually changed, on whichever device changed it.
+    ///
+    /// The tie-breaker when two devices disagree about a *choice* — which plans
+    /// are on the home page, where Continue resumes, what time the reminder is.
+    /// Work done is merged rather than chosen between, so this never decides
+    /// who keeps a memorized verse.
+    ///
+    /// Opening the app is not a change: `lastOpenedAt` moving on its own must
+    /// not make a device's opinions outrank another device's real edit. A file
+    /// written before iCloud sync existed carries no date at all and reads back
+    /// as `.distantPast`, so any copy with a real one is the more recent.
+    public var updatedAt: Date
+    /// Custom plans the user has deleted, and when.
+    ///
+    /// Deleting is a decision, and merging two devices must not undo it by
+    /// copying the plan back from the one that had not heard yet. Built-in
+    /// plans have `hiddenBuiltInPlans` doing the same job.
+    public var removedPlans: [String: Date]
 
     public init(
         schemaVersion: Int = ProgressSnapshot.currentSchemaVersion,
@@ -257,7 +276,9 @@ public struct ProgressSnapshot: Codable, Hashable, Sendable {
         lastOpenedAt: Date = .distantPast,
         notificationsEnabled: Bool = false,
         reminderTime: ReminderTime = .default,
-        includeSuperscriptions: Bool = false
+        includeSuperscriptions: Bool = false,
+        updatedAt: Date = .distantPast,
+        removedPlans: [String: Date] = [:]
     ) {
         self.schemaVersion = schemaVersion
         self.translationId = translationId
@@ -279,6 +300,24 @@ public struct ProgressSnapshot: Codable, Hashable, Sendable {
         self.notificationsEnabled = notificationsEnabled
         self.reminderTime = reminderTime
         self.includeSuperscriptions = includeSuperscriptions
+        self.updatedAt = updatedAt
+        self.removedPlans = removedPlans
+    }
+
+    /// Everything except the bookkeeping that moves on its own.
+    ///
+    /// `lastOpenedAt` changes every time the app comes to the front and
+    /// `updatedAt` is the note about change itself, so neither counts as one.
+    /// This is what decides whether a save is a real edit worth stamping and
+    /// worth sending to iCloud.
+    public func hasSameContent(as other: ProgressSnapshot) -> Bool {
+        var mine = self
+        var theirs = other
+        mine.lastOpenedAt = .distantPast
+        mine.updatedAt = .distantPast
+        theirs.lastOpenedAt = .distantPast
+        theirs.updatedAt = .distantPast
+        return mine == theirs
     }
 
     // MARK: - Access
@@ -339,6 +378,7 @@ public struct ProgressSnapshot: Codable, Hashable, Sendable {
         case pendingCelebration, hasAskedForReview
         case planCumulativeProgress, confirmedPlanBlocks, coveredUnits, onboarding
         case lastOpenedAt, notificationsEnabled, reminderTime, includeSuperscriptions
+        case updatedAt, removedPlans
         // Schema 2 and earlier.
         // `currentVerse` is shared: schema 2 wrote an Int there, schema 3
         // writes a VerseRef, and the decoder branches on schemaVersion.
@@ -356,6 +396,11 @@ public struct ProgressSnapshot: Codable, Hashable, Sendable {
         reminderTime = try container.decodeIfPresent(ReminderTime.self, forKey: .reminderTime) ?? .default
         includeSuperscriptions =
             try container.decodeIfPresent(Bool.self, forKey: .includeSuperscriptions) ?? false
+        // Both arrived with iCloud sync. A file written before it has neither,
+        // and reads back as "never changed, nothing deleted" — which is exactly
+        // how a copy that has never been merged should be treated.
+        updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt) ?? .distantPast
+        removedPlans = try container.decodeIfPresent([String: Date].self, forKey: .removedPlans) ?? [:]
         customPlans = try container.decodeIfPresent([MemoryPlan].self, forKey: .customPlans) ?? []
         hiddenBuiltInPlans =
             try container.decodeIfPresent(Set<String>.self, forKey: .hiddenBuiltInPlans) ?? []
@@ -498,6 +543,8 @@ public struct ProgressSnapshot: Codable, Hashable, Sendable {
         try container.encode(notificationsEnabled, forKey: .notificationsEnabled)
         try container.encode(reminderTime, forKey: .reminderTime)
         try container.encode(includeSuperscriptions, forKey: .includeSuperscriptions)
+        try container.encode(updatedAt, forKey: .updatedAt)
+        try container.encode(removedPlans, forKey: .removedPlans)
     }
 }
 

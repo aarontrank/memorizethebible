@@ -16,18 +16,39 @@ final class AppState {
     let clock: any AppClock
     private let store: ProgressStore
     private let reminders: ReminderScheduler
+    /// Nil when there is no cloud to sync with: the failed-load state, and
+    /// debug launches, which must never touch the user's real iCloud record.
+    private let cloud: CloudProgressSync?
+    private let cloudPreference: CloudSyncPreference
+    /// What is on disk. Compared against `progress` so a save that changes
+    /// nothing is not dressed up as a change (§13.1).
+    private var persisted: ProgressSnapshot
 
     init(
         content: ContentStore,
         store: ProgressStore,
         clock: any AppClock = SystemClock(),
-        reminders: ReminderScheduler = ReminderScheduler()
+        reminders: ReminderScheduler = ReminderScheduler(),
+        cloud: CloudProgressSync? = nil,
+        cloudPreference: CloudSyncPreference = CloudSyncPreference()
     ) {
         self.content = content
         self.store = store
         self.clock = clock
         self.reminders = reminders
-        self.progress = store.load()
+        self.cloud = cloud
+        self.cloudPreference = cloudPreference
+        isCloudSyncEnabled = cloudPreference.isEnabled
+        let loaded = store.load()
+        self.progress = loaded
+        self.persisted = loaded
+
+        cloud?.onRemoteChange = { [weak self] change in
+            Task { @MainActor in self?.cloudRecordChangedElsewhere(change) }
+        }
+        // Before anything else writes. Merging has to see this device's record
+        // as it was left, not as launching the app has just restamped it.
+        syncWithCloud()
     }
 
     /// The shipping configuration.
@@ -40,7 +61,8 @@ final class AppState {
                 }
             #endif
             let store = ProgressStore(fileURL: try ProgressStore.defaultFileURL(), clock: clock)
-            return AppState(content: content, store: store, clock: clock)
+            let cloud = CloudProgressSync(store: UbiquitousCloudProgressStore(), clock: clock)
+            return AppState(content: content, store: store, clock: clock, cloud: cloud)
         } catch {
             return AppState(failedWith: error)
         }
@@ -52,7 +74,15 @@ final class AppState {
             let url = DebugLaunch.progressFileURL()
             try? FileManager.default.removeItem(at: url)
             let store = ProgressStore(fileURL: url, clock: clock)
-            let state = AppState(content: content, store: store, clock: clock)
+            let state = AppState(
+                content: content,
+                store: store,
+                clock: clock,
+                cloud: DebugLaunch.cloudSync
+                    ? CloudProgressSync(store: InMemoryCloudProgressStore(), clock: clock)
+                    : nil,
+                cloudPreference: CloudSyncPreference(defaults: DebugLaunch.defaults)
+            )
             if let seeded = DebugLaunch.seededProgress(content: content, clock: clock) {
                 state.apply(seeded)
             }
@@ -76,7 +106,13 @@ final class AppState {
         store = ProgressStore(fileURL: URL(fileURLWithPath: "/dev/null"))
         clock = SystemClock()
         reminders = ReminderScheduler()
+        // Nothing loaded, so there is nothing worth sending anywhere: an empty
+        // record must never be allowed to stand in for the real one in iCloud.
+        cloud = nil
+        cloudPreference = CloudSyncPreference()
+        isCloudSyncEnabled = false
         progress = ProgressSnapshot()
+        persisted = ProgressSnapshot()
         loadError = error.localizedDescription
     }
 
@@ -189,7 +225,18 @@ final class AppState {
     }
 
     private func persist() {
-        do { try store.save(progress) } catch { loadError = error.localizedDescription }
+        // Opening the app is not an edit. `lastOpenedAt` moves on its own, and
+        // stamping the record for it would make this device's opinions the
+        // newest ones going every time it came to the front (§13.1).
+        let isEdit = !progress.hasSameContent(as: persisted)
+        if isEdit { progress.updatedAt = clock.now }
+        do {
+            try store.save(progress)
+            persisted = progress
+            if isEdit { scheduleCloudPush() }
+        } catch {
+            loadError = error.localizedDescription
+        }
     }
 
     // MARK: - Plans
@@ -198,6 +245,9 @@ final class AppState {
         mutate { snapshot in
             snapshot.customPlans.removeAll { $0.id == plan.id }
             snapshot.customPlans.append(plan)
+            // Adding it is a newer decision than deleting it once was, so the
+            // note that it went stops applying.
+            snapshot.removedPlans.removeValue(forKey: plan.id)
         }
     }
 
@@ -257,6 +307,9 @@ final class AppState {
                 snapshot.hiddenBuiltInPlans.insert(plan.id)
             } else {
                 snapshot.customPlans.removeAll { $0.id == plan.id }
+                // Noted, with the date, so that another device holding a copy
+                // does not hand it back the next time the two records meet.
+                snapshot.removedPlans[plan.id] = self.clock.now
             }
             snapshot.activePlans.remove(plan.id)
             if snapshot.pendingCelebration == .plan(plan.id) { snapshot.pendingCelebration = nil }
@@ -409,11 +462,16 @@ final class AppState {
     // MARK: - Lifecycle (§10)
 
     func didEnterForeground() {
+        // First, so the merge reads the record as this device left it.
+        syncWithCloud()
         mutate { $0.lastOpenedAt = clock.now }
         Task { await reminders.reschedule(for: progress, content: content, clock: clock) }
     }
 
     func didEnterBackground() {
+        // Whatever the delay is still holding goes now: there may not be
+        // another moment before the app is put away for the day.
+        flushCloudPush()
         Task { await reminders.reschedule(for: progress, content: content, clock: clock) }
     }
 
@@ -450,9 +508,102 @@ final class AppState {
     func resetProgress() {
         do {
             progress = try store.reset()
+            persisted = progress
         } catch {
             loadError = error.localizedDescription
         }
+        // Erasing has to reach the copy in iCloud too, or the next launch would
+        // merge every erased verse straight back. Another device that still
+        // holds the record will put its own copy up in time, which is what the
+        // confirmation on the settings screen says.
+        pendingCloudPush?.cancel()
+        cloud?.removeStoredCopy()
+        cloudSyncStatus = cloud?.status ?? .idle
         Task { await reminders.cancelAll() }
+    }
+
+    // MARK: - iCloud (§13.1)
+    //
+    // The record goes up whole and comes down merged, never swapped in: two
+    // devices used apart for a week both keep everything they learned. What is
+    // reconciled, and by which rule, is `ProgressMerge`.
+
+    /// Whether this device keeps a copy of the record in iCloud. On by default.
+    private(set) var isCloudSyncEnabled: Bool
+    private(set) var cloudSyncStatus: CloudProgressSync.Status = .idle
+    /// Sending is held for a moment after the work stops: a session is a long
+    /// run of small changes, and each one would otherwise pack and post the
+    /// whole record.
+    private var pendingCloudPush: Task<Void, Never>?
+
+    /// Whether there is anywhere to sync to. False almost always means nobody
+    /// is signed into iCloud on this device.
+    var isCloudReachable: Bool { cloud?.isAvailable ?? false }
+
+    func setCloudSyncEnabled(_ enabled: Bool) {
+        cloudPreference.isEnabled = enabled
+        isCloudSyncEnabled = enabled
+        if enabled {
+            // Turning it on now sends what is already here, so the first device
+            // to be asked is the one that seeds the record.
+            syncWithCloud()
+        } else {
+            pendingCloudPush?.cancel()
+            cloudSyncStatus = .idle
+        }
+    }
+
+    /// Brings down anything another device has left, and sends this device's
+    /// own record up. Cheap when neither side has changed.
+    func syncWithCloud() {
+        guard isCloudSyncEnabled, let cloud, canWriteRecord else { return }
+        cloud.refresh()
+        if let merged = cloud.pull(into: progress) {
+            // Headings decide what counts as memorized, and two devices can
+            // disagree about the setting. Re-applying whichever answer won
+            // recomputes the chapter completions that follow from it, rather
+            // than leaving a psalm marked finished under the other rule.
+            progress = report.applyingHeadings(merged.includeSuperscriptions, to: merged)
+            persist()
+        }
+        cloud.push(progress)
+        cloudSyncStatus = cloud.status
+    }
+
+    private func cloudRecordChangedElsewhere(_ change: CloudProgressChange) {
+        guard let cloud else { return }
+        if cloud.handle(change) {
+            syncWithCloud()
+        } else {
+            cloudSyncStatus = cloud.status
+        }
+    }
+
+    private func scheduleCloudPush() {
+        guard isCloudSyncEnabled, cloud != nil else { return }
+        pendingCloudPush?.cancel()
+        pendingCloudPush = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            guard !Task.isCancelled else { return }
+            self?.pushToCloud()
+        }
+    }
+
+    private func flushCloudPush() {
+        pendingCloudPush?.cancel()
+        pushToCloud()
+    }
+
+    private func pushToCloud() {
+        guard isCloudSyncEnabled, let cloud, canWriteRecord else { return }
+        cloud.push(progress)
+        cloudSyncStatus = cloud.status
+    }
+
+    /// A file this build refused to read — written by a newer version of the
+    /// app — is one it must not hand on to anybody else either.
+    private var canWriteRecord: Bool {
+        if case .refusedNewerSchema = store.lastLoadOutcome { return false }
+        return true
     }
 }

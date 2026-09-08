@@ -4,7 +4,12 @@
 <dict>
 	<!-- Design doc §13: no data collection of any kind, no tracking, no
 	     third-party SDKs. This manifest is the machine-readable form of the
-	     "Data Not Collected" App Store privacy label. -->
+	     "Data Not Collected" App Store privacy label.
+
+	     iCloud sync (§13.1) does not change that. The progress record is kept
+	     in the user's own iCloud account, which Apple's definition of
+	     collection excludes: it is never transmitted to the developer, and
+	     there is no server on this side to receive it. -->
 	<key>NSPrivacyTracking</key>
 	<false/>
 	<key>NSPrivacyTrackingDomains</key>
@@ -21,6 +26,16 @@
 			<key>NSPrivacyAccessedAPITypeReasons</key>
 			<array>
 				<string>C617.1</string>
+			</array>
+		</dict>
+		<dict>
+			<!-- One key in UserDefaults: whether this device syncs to iCloud.
+			     Read and written by the app itself and nothing else. -->
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>CA92.1</string>
 			</array>
 		</dict>
 	</array>

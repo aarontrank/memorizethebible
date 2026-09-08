@@ -57,10 +57,10 @@ Being version-specific, this one needs retiring when 1.1 stops being news. The
 evergreen line it replaced, to go back to:
 
 ```
-Read a verse, then say it back as the words disappear one by one. The whole Bible, entirely offline — no account, no ads, nothing sent anywhere.
+Read a verse, then say it back as the words disappear one by one. The whole Bible, offline — no account, no ads, and your progress follows you to a new device.
 ```
 
-## Description — 2,954 / 4,000
+## Description — 3,255 / 4,000
 
 ```
 Memorize The Bible teaches a verse the way people actually learn one.
@@ -89,8 +89,10 @@ A memorized chapter can be reviewed whole, at whatever level of masking you choo
 MILESTONES WORTH KEEPING
 Your first verse. Ten of them. A whole chapter, a whole book, a whole plan. A hundred verses. Each one is a certificate you can look back at in the order you earned them, and send to whoever would want to know.
 
-COMPLETELY OFFLINE
-No account. No sign-in. No network requests of any kind. No analytics, no tracking, no advertising, no subscription, no in-app purchases. Your progress lives in a single file on your device and goes nowhere else. The app has no networking code in it at all.
+WORKS OFFLINE, MOVES WITH YOU
+No account. No sign-in. No analytics, no tracking, no advertising, no subscription, no in-app purchases. Every screen works in airplane mode, because the whole Bible is already on your device.
+
+Your progress is kept on the device and, unless you turn it off in Settings, copied to your own iCloud account — so a new iPhone or iPad picks up exactly where the old one left off. Work done on two devices is combined rather than replaced. That copy goes to your iCloud and nowhere else; there is no server on our side and nothing about you to collect.
 
 BUILT TO BE READ
 A serif face set with generous leading, a measure capped for comfortable reading, and a palette of six colours. Full Dynamic Type support through the accessibility sizes, VoiceOver labels throughout, and Reduce Motion respected. Portrait and landscape.
@@ -114,6 +116,16 @@ Open any book, chapter or plan and read it in full. Nothing reaches your home sc
 Peeking is gentler. Tap a blank once for its first letter, again for the whole word. Either way it closes on its own.
 
 Finishing something is celebrated properly now, wherever you finish it.
+```
+
+A draft for the release that adds iCloud sync, whenever it ships:
+
+```
+Your progress now follows you.
+
+Turn on iCloud sync — it is on by default, in Settings — and everything you have memorized is kept in your own iCloud account, so a new iPhone or iPad picks up exactly where the old one left off. Work done on two devices is combined rather than replaced: nothing you have learned is ever dropped for being the older copy.
+
+It goes to your iCloud and nowhere else, and one tap turns it off.
 ```
 
 The 1.0 text, for the record:
@@ -161,11 +173,17 @@ it does not.
 
 ## App Privacy — "Data Not Collected"
 
-The easiest section in the form and a genuine selling point. Declare **no data
-collected at all**: every category answered No, with no linked or tracking data.
-This is literally true — the app contains no networking code.
+Still the easiest section in the form, and still a genuine selling point.
+Declare **no data collected at all**: every category answered No, with no linked
+or tracking data.
 
-Do not let the daily reminder confuse the answer: local notifications are
+iCloud sync does not change the answer. Apple's definition of collection is data
+transmitted off the device *and accessible to the developer or a third party*;
+the progress record goes into the user's own iCloud account, which nobody on
+this side can read. There is no server here to receive anything. The app itself
+contains no networking code — iOS moves the value.
+
+Do not let the daily reminder confuse the answer either: local notifications are
 scheduled on-device by iOS and involve no push server, so nothing is collected.
 
 ## Copyright

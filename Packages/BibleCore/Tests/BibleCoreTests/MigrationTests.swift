@@ -322,6 +322,19 @@ final class MigrationTests: XCTestCase {
         XCTAssertEqual(makeStore().load(), progress)
     }
 
+    // MARK: - Into iCloud sync
+
+    /// A file written before sync existed carries neither of the fields it
+    /// added. `updatedAt` is stamped from when the app was last open — an
+    /// honest lower bound — so a record years in the making does not lose an
+    /// argument to the empty one on a device set up this morning (§13.1).
+    func testARecordFromBeforeSyncIsStampedFromWhenItWasLastOpened() throws {
+        try writeVersionTwoFile()
+        let progress = makeStore().load()
+        XCTAssertEqual(progress.updatedAt, ISO8601DateFormatter().date(from: "2026-08-18T09:00:00Z"))
+        XCTAssertTrue(progress.removedPlans.isEmpty)
+    }
+
     func testAnUnreadableFileIsQuarantinedRatherThanLosingTheApp() throws {
         try write("{ not json at all")
         let store = makeStore()

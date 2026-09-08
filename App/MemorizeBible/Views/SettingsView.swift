@@ -14,6 +14,7 @@ struct SettingsView: View {
         @Bindable var state = state
         List {
             remindersSection
+            iCloudSection
             walkthroughSection
             headingsSection
             spreadTheWordSection
@@ -77,6 +78,62 @@ struct SettingsView: View {
         components.hour = state.progress.reminderTime.hour
         components.minute = state.progress.reminderTime.minute
         return state.clock.calendar.date(from: components) ?? state.clock.now
+    }
+
+    // MARK: - iCloud (§13.1)
+
+    /// On by default, and one tap from off. What it syncs is the progress
+    /// record and nothing else — there is no account to make and no server of
+    /// this app's to send anything to.
+    private var iCloudSection: some View {
+        Section {
+            Toggle(
+                "Sync with iCloud",
+                isOn: Binding(
+                    get: { state.isCloudSyncEnabled },
+                    set: { state.setCloudSyncEnabled($0) }
+                )
+            )
+            .tint(Palette.accent)
+            if state.isCloudSyncEnabled, let note = cloudStatusNote {
+                Text(note)
+                    .font(Typography.chrome(.footnote))
+                    .foregroundStyle(Palette.dimmedText)
+            }
+        } header: {
+            Text("iCloud")
+        } footer: {
+            Text(
+                "Keeps a copy of your progress in your own iCloud account, so a new iPhone or "
+                    + "iPad picks up where the old one left off. Work done on two devices is "
+                    + "combined rather than replaced — nothing you have memorized is ever "
+                    + "dropped for being the older copy.\n\n"
+                    + "Turn it off and your progress stays on this device alone. The copy already "
+                    + "in iCloud is left where it is; erasing your progress below removes it."
+            )
+        }
+    }
+
+    /// Said plainly, and only when there is something to say. Every one of
+    /// these ends the same way: the work on this device is safe either way.
+    private var cloudStatusNote: String? {
+        switch state.cloudSyncStatus {
+        case .idle:
+            return state.isCloudReachable ? nil : "Waiting for iCloud."
+        case let .synced(at):
+            return "Last saved \(at.formatted(.relative(presentation: .named)))."
+        case .unavailable:
+            return "Sign in to iCloud on this device to sync. Your progress is safe here meanwhile."
+        case .refusedNewerRecord:
+            return "The copy in iCloud was saved by a newer version of the app, so it has been "
+                + "left alone. Update to sync with it."
+        case .tooLarge:
+            return "There is no room left in iCloud for your progress. It is all still on this device."
+        case .accountChanged:
+            return "The iCloud account on this device changed. Reopen the app to sync with it."
+        case let .failed(message):
+            return "iCloud could not be reached: \(message)"
+        }
     }
 
     // MARK: - Headings (§7.5)
@@ -188,7 +245,7 @@ struct SettingsView: View {
                 Button("Reset all progress", role: .destructive) { resetStage = 1 }
             } else {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("This erases every verse you've memorized. It cannot be undone.")
+                    Text(resetWarning)
                         .font(Typography.chrome(.footnote))
                         .foregroundStyle(Palette.dimmedText)
                     HStack {
@@ -209,6 +266,17 @@ struct SettingsView: View {
                 .padding(.vertical, 4)
             }
         }
+    }
+
+    /// The iCloud copy goes with it, and another device that still holds the
+    /// record will put its own copy up in time. Better said here than
+    /// discovered later.
+    private var resetWarning: String {
+        let warning = "This erases every verse you've memorized. It cannot be undone."
+        guard state.isCloudSyncEnabled else { return warning }
+        return warning
+            + " The copy in iCloud goes too, though another device that still has your progress "
+            + "will put its own copy back."
     }
 }
 
@@ -237,9 +305,11 @@ struct AboutView: View {
             }
 
             Section("Privacy") {
-                // §13: a genuine differentiator in this category.
-                Text("This app collects no data and makes no network connections.")
-                Text("Your progress is stored only on this device. It is included in your device backups and is never synced or sent anywhere. There are no accounts, no analytics, no advertising identifiers, and no in-app purchases.")
+                // §13: a genuine differentiator in this category, and one that
+                // survives iCloud sync — the copy goes to the user's own
+                // account, not to anybody running this app.
+                Text("This app collects no data and has no server of its own.")
+                Text("Your progress is stored on this device and included in your device backups. With iCloud sync on — it is on unless you turn it off in Settings — a copy is also kept in your own iCloud account, which is what carries your work to a new device; it goes there and nowhere else. Scripture is read from the app itself, never fetched. There are no accounts to make, no analytics, no advertising identifiers, and no in-app purchases.")
                     .font(Typography.chrome(.footnote))
                     .foregroundStyle(Palette.dimmedText)
             }

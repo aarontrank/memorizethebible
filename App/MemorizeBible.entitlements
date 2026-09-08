@@ -11,5 +11,18 @@
 	<array>
 		<string>applinks:aarontrank.com</string>
 	</array>
+	<!--
+	  iCloud key-value storage, for the progress record (§13.1). Key-value and
+	  nothing else: no CloudKit container, no iCloud Drive documents, no
+	  ubiquity container. The record is one small blob written whole, which is
+	  exactly what this store is for.
+
+	  $(TeamIdentifierPrefix) is filled in from the provisioning profile at
+	  build time. The capability has to be enabled on the App ID as well —
+	  without it the store quietly refuses to sync, and the app carries on
+	  saving to the device alone.
+	-->
+	<key>com.apple.developer.ubiquity-kvstore-identifier</key>
+	<string>$(TeamIdentifierPrefix)$(CFBundleIdentifier)</string>
 </dict>
 </plist>

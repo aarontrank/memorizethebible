@@ -2,6 +2,11 @@ import Foundation
 
 /// Atomic, versioned, on-device persistence for `Progress` (§5).
 ///
+/// On-device is where it lives and where it is read from; `CloudProgressSync`
+/// keeps a copy in iCloud alongside it when the user leaves that switched on,
+/// but nothing here depends on it, and the app works exactly as it did with the
+/// setting off (§13.1).
+///
 /// A Codable JSON snapshot rather than Core Data or SwiftData: the whole
 /// document is a few hundred KB at most, and the migration surface should stay
 /// near zero.
@@ -36,7 +41,9 @@ public final class ProgressStore {
     }
 
     /// The shipping location: Application Support, excluded from nothing —
-    /// progress rides along in device backups but is never synced (§13).
+    /// progress rides along in device backups. Whether a copy also goes to
+    /// iCloud is the user's to decide, and is `CloudProgressSync`'s business
+    /// rather than this file's (§13.1).
     public static func defaultFileURL(fileManager: FileManager = .default) throws -> URL {
         let base = try fileManager.url(
             for: .applicationSupportDirectory,
@@ -112,7 +119,10 @@ public final class ProgressStore {
             try fileManager.removeItem(at: fileURL)
         }
         lastLoadOutcome = .fresh
-        let fresh = ProgressSnapshot(lastOpenedAt: clock.now)
+        // Stamped: erasing everything is itself a change, and a record that
+        // claimed never to have changed would lose every argument with the
+        // copy another device is holding.
+        let fresh = ProgressSnapshot(lastOpenedAt: clock.now, updatedAt: clock.now)
         try save(fresh)
         return fresh
     }
@@ -122,6 +132,11 @@ public final class ProgressStore {
         // Version 1 is the first shipping schema; nothing to migrate yet. New
         // versions add their step here and bump currentSchemaVersion.
         progress.schemaVersion = ProgressSnapshot.currentSchemaVersion
+        // A file written before iCloud sync carries no stamp. When the app was
+        // last open is an honest lower bound for when the record last changed,
+        // and it is what keeps a record years in the making from losing an
+        // argument to the empty one on a device set up this morning (§13.1).
+        if progress.updatedAt == .distantPast { progress.updatedAt = progress.lastOpenedAt }
         return progress
     }
 

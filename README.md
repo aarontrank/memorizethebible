@@ -4,9 +4,10 @@ A single-purpose, fully offline iOS app for memorizing scripture. Grown from
 [`psalms-app-design-doc.md`](psalms-app-design-doc.md), which covered Psalms
 alone; every section reference in the code (§7.2, §8.1, …) points back to it.
 
-No account, no network, no analytics, no in-app purchases. The whole Bible —
-66 books, 1,189 chapters, 31,086 verses — ships in the app bundle; all progress
-stays in the app container.
+No account, no analytics, no in-app purchases, and no server of this app's own.
+The whole Bible — 66 books, 1,189 chapters, 31,086 verses — ships in the app
+bundle. Progress lives in the app container, with a copy kept in the user's own
+iCloud account unless they turn that off.
 
 ## Divergences from the design doc
 
@@ -63,6 +64,12 @@ plan. So each target records which of its units it has covered:
   costs nothing.
 - The rule runs both ways: a plan asks the same question about a verse you
   learned in its chapter.
+
+**6. Progress can be kept in iCloud (supersedes §13's "never synced").** On by
+default, one tap from off in **Settings → iCloud**, and the app is unchanged
+with it off — the record on disk is still the only thing anything reads. What
+changes is that a copy also goes to the user's own iCloud key-value store, so a
+new phone picks up where the old one left off. See **Syncing** below.
 
 ## Layout
 
@@ -150,10 +157,77 @@ The split matters: `BibleCore` is pure Foundation with no UI and no `Date()`,
 so the memorization rules are testable in about two seconds, with no simulator
 and no waiting on the calendar.
 
+## Syncing
+
+The whole progress record goes up as one value in the user's own iCloud
+key-value store, and comes back down **merged rather than swapped in**
+(`ProgressMerge`). Three rules decide the merge, and the order matters:
+
+1. **Work done is never lost.** Verses, chapters, coverage, finished plans and
+   recitations are unioned, and where two copies disagree about a number the
+   higher stands — the same instinct as the high-water mark inside `VerseState`,
+   applied across devices. Two devices used apart for a week both keep
+   everything they learned.
+2. **A choice is whatever was chosen most recently.** Which plans are on the
+   home page, where Continue resumes, the reminder time, psalm headings. Merging
+   those would mean a plan taken off the home page here quietly coming back from
+   there, so the record with the newer `updatedAt` holds them.
+3. **Some things belong to the device.** Whether reminders are on rests on a
+   permission granted on one device; a walkthrough running here is not running
+   there.
+
+`updatedAt` is the tie-breaker for rule 2, and it is stamped only when the
+record actually changes: opening the app moves `lastOpenedAt`, and if that
+counted as a change, simply launching a phone would make its opinions outrank
+every edit made on the iPad. `ProgressSnapshot.hasSameContent(as:)` is what
+draws that line, and it is also what stops a push that would say nothing new.
+
+Deleting a custom plan writes a tombstone (`removedPlans`) with its date.
+Without one, merging would hand the plan back from whichever device had not
+heard yet — `hiddenBuiltInPlans` already did this job for built-ins. A plan
+saved again after its deletion outlives its own tombstone, which is what makes
+a shared plan arriving a second time work.
+
+**Backwards compatibility.** `updatedAt` and `removedPlans` are additive: a file
+written by 1.3 or earlier has neither and reads back as "never changed, nothing
+deleted", which is exactly how a copy that has never been merged should be
+treated. The schema version is unchanged at 5, so an older build reads a new
+file and simply ignores the two keys — and never touches iCloud at all, so an
+old device beside a new one loses nothing either way. A record in iCloud from a
+*newer* build is neither adopted nor overwritten, the same rule `ProgressStore`
+applies to a file on disk from the future.
+
+**Why key-value storage and not CloudKit.** The record is already exactly what
+that store wants: one small blob, written whole, last writer wins. No schema to
+keep in step with a server, no container, no file coordination. The cost is a
+1 MB ceiling, which `CloudProgressPayload` answers by compressing — the whole
+Bible memorized comes to a fraction of it, and `CloudSyncTests` holds that
+claim to account by packing 30,914 mastered verses and measuring.
+
+Sending is held for three seconds after the work stops, and flushed when the app
+goes to the background: a session is a long run of small changes, and each one
+would otherwise pack and post the whole record.
+
+Erasing progress removes the copy in iCloud too — otherwise the next launch
+would merge every erased verse straight back. Another device that still holds
+the record will put its own copy up in time, and the confirmation says so.
+
+`BibleCore` holds all of this except the one class that actually talks to
+iCloud (`App/MemorizeBible/Sync/UbiquitousCloudProgressStore.swift`), so the
+merge rules are tested in milliseconds with no account, no network and no
+simulator.
+
+**The iCloud capability has to be enabled on the App ID.** The entitlement is in
+`App/MemorizeBible.entitlements`; without the matching capability the key-value
+store quietly refuses to sync and the app carries on saving to the device alone,
+which is also what happens when nobody is signed into iCloud. Debug launches
+(`-uiDebug`) never touch the real store: they get an in-memory one, and only
+with `-debugCloudSync`.
+
 ## Build and test
 
 ```sh
-# Logic (155 tests, no simulator needed)
+# Logic (240 tests, no simulator needed)
 cd Packages/BibleCore && swift test
 
 # Content pipeline (29 tests, validates all 31,086 verses)
@@ -249,6 +323,7 @@ xcrun simctl launch <sim> memorizethebible.aarontrank.com \
 | `-debugHeadings` | include psalm headings as memorizable units |
 | `-debugDayOffset` | date the seeded work N days in the past |
 | `-debugSeedPlans` | adds one plan of your own and one received as shared |
+| `-debugCloudSync` | gives Settings → iCloud an in-memory store to talk to; the real one is never touched under `-uiDebug` |
 | `-debugHideBuiltInPlans` | hides the built-ins, so the sections under them fit on screen |
 | `-debugOpenURL` | hands a plan link to the URL handler. Only needed for the legacy `memorizethebible://` scheme, whose "Open in…" prompt no script can tap — a universal link can just be passed to `simctl openurl` |
 | `-debugAcceptShare` | with `-debugOpenURL`, saves the arriving plan without a tap |
@@ -259,7 +334,7 @@ xcrun simctl launch <sim> memorizethebible.aarontrank.com \
 | # | Milestone | State |
 |---|---|---|
 | M1 | Content pipeline | done — 66 books, 1,189 chapters, 31,086 verses, all validated |
-| M2 | Data + persistence | done — atomic snapshot, schema 1→2→3→4→5 migrations, corrupt-file recovery |
+| M2 | Data + persistence | done — atomic snapshot, schema 1→2→3→4→5 migrations, corrupt-file recovery, iCloud merge |
 | M3 | Masking renderer | done — zero reflow at every level and every Dynamic Type size |
 | M4 | Session engine | done — read → ladder → mastered → cumulative |
 | M5 | Confirmation pass | **removed** — see divergences above |
@@ -350,3 +425,11 @@ their verse numbering, and nothing in the app assumes verses run 1…n.
   touches the Xcode package reference, so it is worth doing on a quiet diff.
 - **Reminder copy.** Now reads "Romans 8 is waiting — 3 of 39 verses." for a
   chapter and "The Roman Road — 2 of 6 verses." for a plan; still a tone call.
+- **iCloud capability on the App ID.** The entitlement is checked in, but the
+  capability has to be switched on for `memorizethebible.aarontrank.com` in the
+  developer account before a signed build can sync. Until it is, the app builds
+  and runs and the setting simply never reports a save.
+- **The store copy in `AppStoreListing.md` and `AppReviewNotes.md` has been
+  updated for sync**, but "Data Not Collected" still holds: the record goes to
+  the user's own iCloud account and is not accessible to the developer, which
+  Apple's definition of collection excludes.

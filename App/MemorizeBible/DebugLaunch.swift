@@ -50,6 +50,18 @@
         /// both sections of the Plans page and the share button can be seen.
         static var seedPlans: Bool { arguments.contains("-debugSeedPlans") }
 
+        /// Gives the iCloud section of Settings something to talk to: a store
+        /// held in memory. Without it a debug launch has no cloud at all, which
+        /// is the point — driving the UI from a script must never touch the
+        /// real iCloud record, any more than it touches the real progress file.
+        static var cloudSync: Bool { arguments.contains("-debugCloudSync") }
+
+        /// A throwaway defaults suite, so a debug launch flipping the iCloud
+        /// switch does not flip it for the app proper.
+        static var defaults: UserDefaults {
+            UserDefaults(suiteName: "uiDebug.memorizebible") ?? .standard
+        }
+
         /// Apple's rating prompt is an interruption, and two of the standard
         /// screenshots now earn it. Off under `-uiDebug` unless asked for.
         static var reviewPrompt: Bool { arguments.contains("-debugReviewPrompt") }
