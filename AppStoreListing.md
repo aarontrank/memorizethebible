@@ -10,20 +10,51 @@ hard caps, checked, not estimated.
 
 ---
 
-## Name — 18 / 30
+## The three fields that are searched
+
+Name, subtitle and keywords are indexed as **one pool**, and Apple builds
+multi-word matches across the three. So a word placed in two of them is bought
+twice and delivered once. Title carries the most weight; subtitle and keywords
+are near enough equal.
+
+The description is **not** indexed by App Store search. It is a conversion
+field, and the only reason to touch it is to make someone tap Get. (Google does
+index the App Store page, so it earns a little web traffic — not enough to write
+for.)
+
+One lever that is easy to forget: the **developer name is indexed too**. If it is
+set to a personal name in App Store Connect, that is free keyword space going
+unused.
+
+## Name — 26 / 30
 
 ```
-Memorize The Bible
+Memorize The Bible: Verses
 ```
 
-## Subtitle — 24 / 30
+The previous name was `Memorize The Bible`, 18 / 30 — twelve unused characters
+in the highest-weighted field there is. The clause spends them on `verses` and
+frees the subtitle to carry different words entirely.
+
+The alternative, if the name is ever treated as disposable:
+`Bible Memory: Memorize Verses` (29), which leads with the category term at top
+weight. Better ASO, worse branding, and it changes the icon label, the landing
+page and every screenshot.
+
+## Subtitle — 30 / 30
 
 ```
-Verses by heart, offline
+Scripture memory, daily recall
 ```
 
-Name, subtitle and keywords are indexed as one pool, so the subtitle deliberately
-repeats no word from the name. Alternatives, all within the cap:
+The previous subtitle was `Verses by heart, offline`, which spent 24 characters
+on `by`, `heart` and `offline` — all at or near the floor of the popularity
+scale. This one buys `scripture`, `memory`, `daily` and `recall`, and puts
+`memory` in the pool alongside `bible` so the phrase **"bible memory"** — the
+term this category is actually searched by — matches.
+
+It reads a shade more like a feature list than the old one did. That is the
+price of the density; earlier drafts kept for the record:
 
 | Subtitle | Len |
 |---|---|
@@ -32,15 +63,46 @@ repeats no word from the name. Alternatives, all within the cap:
 | Scripture memory, offline | 25 |
 | Whole Bible. No account. | 24 |
 
-## Keywords — 92 / 100
+## Keywords — 95 / 100
 
 ```
-scripture,memory,recite,verse,psalms,devotional,christian,study,recall,flashcards,quiet time
+psalms,christian,study,devotional,learn,memorization,recite,flashcards,testament,teach,remember
 ```
 
 No spaces after commas — they count against the 100. Nothing here repeats a word
-from the name or subtitle. No competitor app names (Apple rejects those), and no
-translation names the app does not ship.
+from the name or subtitle, which is where the room came from: `scripture`,
+`memory` and `recall` moved up into the subtitle, and `verse`, `offline`, `heart`
+and `quiet time` were dropped for having no volume.
+
+`memorization` earns its 12 characters. It is a different lemma from `memorize`
+and Apple will not bridge the two, and "bible memorization" is genuinely
+searched.
+
+The marginal entries, to swap first when testing alternatives: `flashcards` (the
+app is deliberately not flashcards, but the search intent matches) and `teach`.
+
+Still excluded on purpose: no competitor app names, which Apple rejects, and no
+translation names the app does not ship. `kjv`, `niv` and `esv` are all high
+volume and all off the table — the app ships the BSB, and claiming otherwise is
+both a rejection risk and a one-star review waiting to happen.
+
+## What none of the above will fix
+
+Ranking is driven mostly by download velocity, retention and rating count. The
+three fields decide what the app is *eligible* to rank for; they do not decide
+where it lands. The app already had `bible` in its title and ranked nowhere for
+it — `bible` scores 75 for popularity against 88 for competitiveness, and that
+is not a text problem.
+
+So the in-app rating prompt and the certificate sharing from 1.3 are doing more
+for search rank than the keyword field is.
+
+Prompted by an ASO Scout report, 8 September 2026, which is worth reading with
+its sales framing subtracted: it opens on `memorize` ranking outside the top 200,
+and its own table scores that keyword 6 for popularity — the floor of a 5–100
+scale, meaning essentially nobody searches it. The one useful row was `verses`,
+at 26 popularity against 44 competitiveness, with the real category listed beside
+it: Verses – Bible Memory, The Bible Memory App, Memorize By Heart.
 
 ## Promotional text — 167 / 170
 
