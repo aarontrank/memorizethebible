@@ -13,12 +13,13 @@ struct SettingsView: View {
     var body: some View {
         @Bindable var state = state
         List {
-            remindersSection
-            iCloudSection
-            walkthroughSection
-            headingsSection
             spreadTheWordSection
+            remindersSection
+            headingsSection
+            walkthroughSection
+            iCloudSection
             aboutSection
+            // Always last: the one thing here that cannot be undone.
             resetSection
         }
         .listStyle(.insetGrouped)
