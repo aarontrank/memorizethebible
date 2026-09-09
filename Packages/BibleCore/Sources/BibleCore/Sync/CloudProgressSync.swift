@@ -100,7 +100,7 @@ public final class CloudProgressSync {
 
         isRefusingRemote = false
         lastKnownPayload = payload
-        status = .synced(at: clock.now)
+        status = availableStatus
         let merged = ProgressMerge.merge(local: local, remote: record.snapshot)
         return merged.hasSameContent(as: local) ? nil : merged
     }
@@ -127,10 +127,18 @@ public final class CloudProgressSync {
         do {
             try store.savePayload(payload)
             lastKnownPayload = payload
-            status = .synced(at: clock.now)
+            status = availableStatus
         } catch {
             status = .failed(error.localizedDescription)
         }
+    }
+
+    /// Saving to the key-value store succeeds whether or not anyone is signed
+    /// into iCloud — it keeps a copy on disk either way — so the store saying
+    /// yes is not evidence that anything left the device. Only claim a send
+    /// when there was somewhere for it to go.
+    private var availableStatus: Status {
+        store.isAvailable ? .synced(at: clock.now) : .unavailable
     }
 
     /// Takes the record out of iCloud, for when the user erases their progress.

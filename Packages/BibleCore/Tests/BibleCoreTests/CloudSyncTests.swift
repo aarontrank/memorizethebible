@@ -319,6 +319,46 @@ final class CloudProgressSyncTests: XCTestCase {
 
     private func sync() -> CloudProgressSync { CloudProgressSync(store: store, clock: clock) }
 
+    /// The app cannot say "last sent to iCloud" when there is no iCloud to send
+    /// to. Writing still succeeds — the key-value store keeps a copy on disk
+    /// whether or not an account exists — so success at the store is not
+    /// evidence that anything left the device.
+    func testPushingWithNoAccountDoesNotReportASend() {
+        store = InMemoryCloudProgressStore(isAvailable: false)
+        var snapshot = ProgressSnapshot(updatedAt: clock.now)
+        snapshot.seedWorked(VerseRef(.psalms, 23, 1), by: .chapter(ChapterRef(.psalms, 23)), at: clock.now)
+
+        let sync = sync()
+        sync.push(snapshot)
+
+        XCTAssertEqual(sync.status, .unavailable, "it did not go anywhere, so do not say it did")
+    }
+
+    func testPushingWithAnAccountStillReportsTheSend() {
+        var snapshot = ProgressSnapshot(updatedAt: clock.now)
+        snapshot.seedWorked(VerseRef(.psalms, 23, 1), by: .chapter(ChapterRef(.psalms, 23)), at: clock.now)
+
+        let sync = sync()
+        sync.push(snapshot)
+
+        XCTAssertEqual(sync.status, .synced(at: clock.now))
+    }
+
+    /// Coming back with the account gone must not leave the old reassurance up.
+    func testLosingTheAccountClearsAPreviousSend() {
+        var snapshot = ProgressSnapshot(updatedAt: clock.now)
+        snapshot.seedWorked(VerseRef(.psalms, 23, 1), by: .chapter(ChapterRef(.psalms, 23)), at: clock.now)
+        let sync = sync()
+        sync.push(snapshot)
+        XCTAssertEqual(sync.status, .synced(at: clock.now))
+
+        store.isAvailable = false
+        snapshot.seedWorked(VerseRef(.psalms, 23, 2), by: .chapter(ChapterRef(.psalms, 23)), at: clock.now)
+        sync.push(snapshot)
+
+        XCTAssertEqual(sync.status, .unavailable)
+    }
+
     func testANewDevicePicksUpEverythingTheOldOneLearned() throws {
         var onPhone = ProgressSnapshot(updatedAt: clock.now)
         onPhone.seedWorked(VerseRef(.psalms, 23, 1), by: .chapter(ChapterRef(.psalms, 23)), at: clock.now)

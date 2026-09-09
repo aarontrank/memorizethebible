@@ -109,7 +109,9 @@ struct SettingsView: View {
                     + "combined rather than replaced — nothing you have memorized is ever "
                     + "dropped for being the older copy.\n\n"
                     + "Turn it off and your progress stays on this device alone. The copy already "
-                    + "in iCloud is left where it is; erasing your progress below removes it."
+                    + "in iCloud is left where it is; erasing your progress below removes it.\n\n"
+                    + "Syncing also has to be switched on for this app in the device's own iCloud "
+                    + "settings. Turning it off there stops the copy without changing this switch."
             )
         }
     }
@@ -121,7 +123,9 @@ struct SettingsView: View {
         case .idle:
             return state.isCloudReachable ? nil : "Waiting for iCloud."
         case let .synced(at):
-            return "Last saved \(at.formatted(.relative(presentation: .named)))."
+            // Sent, not saved: the app hands the record to iOS and cannot see
+            // what iOS does with it afterwards.
+            return "Last sent to iCloud \(at.formatted(.relative(presentation: .named)))."
         case .unavailable:
             return "Sign in to iCloud on this device to sync. Your progress is safe here meanwhile."
         case .refusedNewerRecord:

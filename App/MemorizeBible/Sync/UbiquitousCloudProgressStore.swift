@@ -43,11 +43,22 @@ final class UbiquitousCloudProgressStore: CloudProgressStore {
         if let observer { NotificationCenter.default.removeObserver(observer) }
     }
 
-    /// `synchronize()` is the honest answer to "is there anywhere to sync to":
-    /// it returns false when the iCloud entitlement is missing or iCloud is
-    /// unavailable on the device. Asking `FileManager` for a ubiquity token
-    /// would be answering a different question — that one is about iCloud
-    /// Drive, which this app does not use.
+    /// Whether there is an iCloud account here to sync with.
+    ///
+    /// This used to ask `synchronize()`, on the belief that it answers "is
+    /// there anywhere to sync to". It does not: it reconciles the in-memory
+    /// copy with the one on disk, and returns true whether or not iCloud is
+    /// reachable. Measured on a device with nobody signed in, it returns true
+    /// while the system logs "No account" for every attempt — which is how the
+    /// app came to report a save it had not made.
+    ///
+    /// `ubiquityIdentityToken` is nil when nobody is signed into iCloud, and
+    /// that much the system will answer honestly.
+    ///
+    /// It does not answer the narrower question of whether iCloud has been
+    /// turned off for *this app* in the device's own iCloud settings. There is
+    /// no API that does, so the app says what it actually knows — it has handed
+    /// the record over — and Settings points at the switch that can silence it.
     var isAvailable: Bool { isReachable }
 
     func loadPayload() throws -> Data? { store.data(forKey: Self.payloadKey) }
@@ -63,7 +74,10 @@ final class UbiquitousCloudProgressStore: CloudProgressStore {
     }
 
     func refresh() {
-        isReachable = store.synchronize()
+        // Still called: it is what hands the in-memory copy to the daemon. Its
+        // result is simply not the question being asked here.
+        _ = store.synchronize()
+        isReachable = FileManager.default.ubiquityIdentityToken != nil
     }
 
     private func storeChangedExternally(_ notification: Notification) {
