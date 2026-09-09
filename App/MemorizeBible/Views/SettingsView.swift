@@ -9,6 +9,11 @@ struct SettingsView: View {
     @State private var showHeadingsConfirmation = false
     @State private var reopenedChapters: [ChapterRef] = []
     @State private var isConfirmingReset = false
+    /// The reset sheet opens to the height of its own content. Measured rather
+    /// than guessed: the warning is three lines at the default text size and
+    /// nine at the accessibility ones, and a fixed height would either crop it
+    /// there or leave a hole here.
+    @State private var resetSheetHeight: CGFloat = 260
 
     var body: some View {
         @Bindable var state = state
@@ -31,12 +36,14 @@ struct SettingsView: View {
         .sheet(isPresented: $isConfirmingReset) {
             ResetProgressView(
                 warning: resetWarning,
+                contentHeight: $resetSheetHeight,
                 onErase: {
                     state.resetProgress()
                     isConfirmingReset = false
                 },
                 onCancel: { isConfirmingReset = false }
             )
+            .presentationDetents([.height(resetSheetHeight)])
         }
         .confirmationDialog(
             "Include psalm headings?",
@@ -349,13 +356,14 @@ struct AboutView: View {
 /// The confirmation for erasing everything, given the whole screen.
 struct ResetProgressView: View {
     let warning: String
+    /// Reported back so the sheet can open to exactly this much.
+    @Binding var contentHeight: CGFloat
     let onErase: () -> Void
     let onCancel: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            // Top-aligned rather than centred: this is four lines, and centring
-            // left it adrift in the middle of an empty sheet.
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
             Text("Erase everything?")
                 .font(Typography.chrome(.largeTitle).weight(.bold))
                 .foregroundStyle(Palette.text)
@@ -365,8 +373,6 @@ struct ResetProgressView: View {
                 .font(Typography.scripture(.body))
                 .foregroundStyle(Palette.text)
                 .fixedSize(horizontal: false, vertical: true)
-
-            Spacer(minLength: 0)
 
             VStack(spacing: 12) {
                 Button("Erase everything", action: onErase)
@@ -378,8 +384,23 @@ struct ResetProgressView: View {
                     .foregroundStyle(Palette.dimmedText)
             }
         }
-        .padding(Metrics.gutter * 1.5)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            .padding(Metrics.gutter * 1.5)
+            // No maxHeight: the sheet opens to whatever this measures, so it
+            // has to be its own size rather than filling what it is handed.
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background {
+                GeometryReader { proxy in
+                    Color.clear
+                        .onChange(of: proxy.size.height, initial: true) { _, height in
+                            contentHeight = height
+                        }
+                }
+            }
+        }
+        // Scrolls only when it has to, which is at the accessibility text
+        // sizes, where four lines of warning become a screenful and the sheet
+        // can no longer open tall enough to hold it.
+        .scrollBounceBehavior(.basedOnSize)
         .background(Palette.background)
     }
 }
