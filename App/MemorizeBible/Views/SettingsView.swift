@@ -363,28 +363,33 @@ struct ResetProgressView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-            Text("Erase everything?")
-                .font(Typography.chrome(.largeTitle).weight(.bold))
-                .foregroundStyle(Palette.text)
-                .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 14) {
+                // Sized for a sheet the height of a paragraph, not for the
+                // full-screen introduction this borrowed its shape from — and
+                // set in the interface face, because the scripture serif is for
+                // scripture and none of this is.
+                Text("Erase everything?")
+                    .font(Typography.chrome(.title3).weight(.semibold))
+                    .foregroundStyle(Palette.text)
+                    .fixedSize(horizontal: false, vertical: true)
 
-            Text(warning)
-                .font(Typography.scripture(.body))
-                .foregroundStyle(Palette.text)
-                .fixedSize(horizontal: false, vertical: true)
-
-            VStack(spacing: 12) {
-                Button("Erase everything", action: onErase)
-                    .buttonStyle(DestructiveButtonStyle())
-                // Cancel is the quiet one and the easy one to hit by accident,
-                // so it is the plain text rather than the filled button.
-                Button("Cancel", action: onCancel)
+                Text(warning)
                     .font(Typography.chrome(.subheadline))
                     .foregroundStyle(Palette.dimmedText)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                VStack(spacing: 12) {
+                    Button("Erase everything", action: onErase)
+                        .buttonStyle(DestructiveButtonStyle())
+                    // Cancel is the quiet one and the easy one to hit by
+                    // accident, so it is plain text rather than a filled button.
+                    Button("Cancel", action: onCancel)
+                        .font(Typography.chrome(.subheadline))
+                        .foregroundStyle(Palette.dimmedText)
+                }
+                .padding(.top, 4)
             }
-        }
-            .padding(Metrics.gutter * 1.5)
+            .padding(Metrics.gutter)
             // No maxHeight: the sheet opens to whatever this measures, so it
             // has to be its own size rather than filling what it is handed.
             .frame(maxWidth: .infinity, alignment: .leading)
