@@ -117,16 +117,20 @@ struct SettingsView: View {
         }
     }
 
-    /// Said plainly, and only when there is something to say. Every one of
-    /// these ends the same way: the work on this device is safe either way.
+    /// Said plainly, and only when there is something to say — which means
+    /// only when something is wrong. Every one of these ends the same way: the
+    /// work on this device is safe either way.
+    ///
+    /// There is deliberately no line for the good case. The app hands the
+    /// record to iOS and never learns what iOS did with it: iCloud switched
+    /// off for this app in the device's own settings looks, from in here,
+    /// exactly like iCloud working. Reporting a send under those conditions
+    /// was telling people something the app could not know, so it says
+    /// nothing, and the switch being on is the whole of the claim.
     private var cloudStatusNote: String? {
         switch state.cloudSyncStatus {
-        case .idle:
+        case .idle, .synced:
             return state.isCloudReachable ? nil : "Waiting for iCloud."
-        case let .synced(at):
-            // Sent, not saved: the app hands the record to iOS and cannot see
-            // what iOS does with it afterwards.
-            return "Last sent to iCloud \(at.formatted(.relative(presentation: .named)))."
         case .unavailable:
             return "Sign in to iCloud on this device to sync. Your progress is safe here meanwhile."
         case .refusedNewerRecord:
