@@ -8,7 +8,7 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var showHeadingsConfirmation = false
     @State private var reopenedChapters: [ChapterRef] = []
-    @State private var resetStage = 0
+    @State private var isConfirmingReset = false
 
     var body: some View {
         @Bindable var state = state
@@ -25,6 +25,19 @@ struct SettingsView: View {
         .listStyle(.insetGrouped)
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
+        // A sheet rather than a panel unfolding at the foot of a long list,
+        // where it opened below the fold and had to be scrolled to before it
+        // could be read — the last place to hide the one irreversible thing.
+        .sheet(isPresented: $isConfirmingReset) {
+            ResetProgressView(
+                warning: resetWarning,
+                onErase: {
+                    state.resetProgress()
+                    isConfirmingReset = false
+                },
+                onCancel: { isConfirmingReset = false }
+            )
+        }
         .confirmationDialog(
             "Include psalm headings?",
             isPresented: $showHeadingsConfirmation,
@@ -250,36 +263,10 @@ struct SettingsView: View {
 
     private var resetSection: some View {
         Section {
-            if resetStage == 0 {
-                Button("Reset all progress", role: .destructive) { resetStage = 1 }
-            } else {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(resetWarning)
-                        .font(Typography.chrome(.footnote))
-                        .foregroundStyle(Palette.dimmedText)
-                    HStack {
-                        Button("Cancel") { resetStage = 0 }
-                            .buttonStyle(.bordered)
-                        Spacer()
-                        Button("Erase everything", role: .destructive) {
-                            state.resetProgress()
-                            resetStage = 0
-                        }
-                        .buttonStyle(.borderedProminent)
-                        // Red for its own sake — this is the irreversible one —
-                        // and because the app's ink tint would otherwise fill it
-                        // with the same colour as its label.
-                        .tint(.red)
-                    }
-                }
-                .padding(.vertical, 4)
-            }
+            Button("Reset all progress", role: .destructive) { isConfirmingReset = true }
         }
     }
 
-    /// The iCloud copy goes with it, and another device that still holds the
-    /// record will put its own copy up in time. Better said here than
-    /// discovered later.
     private var resetWarning: String {
         let warning = "This erases every verse you've memorized. It cannot be undone."
         guard state.isCloudSyncEnabled else { return warning }
@@ -356,5 +343,43 @@ struct AboutView: View {
         let version = info?["CFBundleShortVersionString"] as? String ?? "1.0"
         let build = info?["CFBundleVersion"] as? String ?? "1"
         return "\(version) (\(build))"
+    }
+}
+
+/// The confirmation for erasing everything, given the whole screen.
+struct ResetProgressView: View {
+    let warning: String
+    let onErase: () -> Void
+    let onCancel: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            // Top-aligned rather than centred: this is four lines, and centring
+            // left it adrift in the middle of an empty sheet.
+            Text("Erase everything?")
+                .font(Typography.chrome(.largeTitle).weight(.bold))
+                .foregroundStyle(Palette.text)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text(warning)
+                .font(Typography.scripture(.body))
+                .foregroundStyle(Palette.text)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Spacer(minLength: 0)
+
+            VStack(spacing: 12) {
+                Button("Erase everything", action: onErase)
+                    .buttonStyle(DestructiveButtonStyle())
+                // Cancel is the quiet one and the easy one to hit by accident,
+                // so it is the plain text rather than the filled button.
+                Button("Cancel", action: onCancel)
+                    .font(Typography.chrome(.subheadline))
+                    .foregroundStyle(Palette.dimmedText)
+            }
+        }
+        .padding(Metrics.gutter * 1.5)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .background(Palette.background)
     }
 }

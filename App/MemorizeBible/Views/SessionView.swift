@@ -340,6 +340,19 @@ struct PrimaryButtonStyle: ButtonStyle {
     }
 }
 
+/// The primary button's twin, for the one action that cannot be undone. Red
+/// carries the warning; white on it is the same treatment iOS gives its own.
+struct DestructiveButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(Typography.chrome(.headline))
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity, minHeight: Metrics.minimumTapTarget)
+            .background(Color.red, in: RoundedRectangle(cornerRadius: 12))
+            .opacity(configuration.isPressed ? 0.8 : 1)
+    }
+}
+
 struct SecondaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
